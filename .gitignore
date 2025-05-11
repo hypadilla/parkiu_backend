@@ -1,0 +1,35 @@
+node_modules
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+.pnpm-debug.log
+
+# Environment variables
+.env
+
+# IDEs and editors
+.vscode/
+.idea/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Dependency directories
+/pnpm-lock.yaml
+/package-lock.json
+/yarn.lock
+
+# Ignorar el archivo de clave de servicio de Firebase
+serviceAccountKey.json
+
+# Ignorar el archivo .env que contiene credenciales sensibles
+.env
+
+# Ignorar el reporte del coverage
+coverage
