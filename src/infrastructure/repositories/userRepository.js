@@ -1,149 +1,136 @@
-const db = require('../database/firebaseService');
+const User = require('../database/models/User');
 const UserMapper = require('../../core/services/mapping/userMapper');
-const UserAlreadyExistsError = require('../../core/errors/userAlreadyExistsError');
 
 class UserRepository {
-    constructor() {
-        this.collection = db.collection('users');
+  async getByUsername(username) {
+    try {
+      const user = await User.findOne({ username }).lean();
+      return user ? UserMapper.toDomain(user) : null;
+    } catch (error) {
+      throw new Error(`Error obteniendo usuario por username: ${error.message}`);
     }
+  }
 
-    async create(user) {
-        try {
-            const usernameSnap = await this.collection.where('username', '==', user.username).limit(1).get();
-            if (!usernameSnap.empty) {
-                throw new UserAlreadyExistsError('username');
-            }
-
-            const emailSnap = await this.collection.where('email', '==', user.email).limit(1).get();
-            if (!emailSnap.empty) {
-                throw new UserAlreadyExistsError('email');  
-            }
-
-            const userData = UserMapper.toPersistence(user);
-            const now = new Date();
-            userData.createdDate = now;
-            userData.lastModifiedDate = now;
-            userData.createdBy = userData.createdBy || 'system';
-            userData.lastModifiedBy = userData.lastModifiedBy || 'system';
-
-            const docRef = await this.collection.add(userData);
-            return UserMapper.toDomain({ id: docRef.id, ...userData });
-        } catch (error) {
-            throw error;
-        }
+  async getByEmail(email) {
+    try {
+      const user = await User.findOne({ email }).lean();
+      return user ? UserMapper.toDomain(user) : null;
+    } catch (error) {
+      throw new Error(`Error obteniendo usuario por email: ${error.message}`);
     }
+  }
 
-    async getById(id) {
-        try {
-            const doc = await this.collection.doc(id).get();
-            if (!doc.exists) return null;
-            return UserMapper.toDomain({ id: doc.id, ...doc.data() });
-        } catch (error) {
-            throw error;
-        }
+  async create(userData) {
+    try {
+      const user = new User(userData);
+      const savedUser = await user.save();
+      return UserMapper.toDomain(savedUser.toObject());
+    } catch (error) {
+      if (error.code === 11000) {
+        const field = Object.keys(error.keyPattern)[0];
+        throw new Error(`Usuario con este ${field} ya existe`);
+      }
+      throw new Error(`Error creando usuario: ${error.message}`);
     }
+  }
 
-    async getByUsername(username) {
-        try {
-            const snapshot = await this.collection.where('username', '==', username).limit(1).get();
-            if (snapshot.empty) return null;
-
-            const doc = snapshot.docs[0];
-            return UserMapper.toDomain({ id: doc.id, ...doc.data() });
-        } catch (error) {
-            throw error;
-        }
+  async getById(id) {
+    try {
+      const user = await User.findById(id).lean();
+      return user ? UserMapper.toDomain(user) : null;
+    } catch (error) {
+      throw new Error(`Error obteniendo usuario por ID: ${error.message}`);
     }
+  }
 
-    async update(id, userUpdates) {
-        try {
-            const userRef = this.collection.doc(id);
-            const doc = await userRef.get();
+  async update(id, updateData) {
+    try {
+      const user = await User.findByIdAndUpdate(
+        id,
+        { ...updateData, lastModifiedDate: new Date() },
+        { new: true, runValidators: true }
+      ).lean();
 
-            if (!doc.exists) {
-                throw new Error('User not found');
-            }
+      if (!user) {
+        throw new Error('Usuario no encontrado');
+      }
 
-            const dataToUpdate = {};
-
-            if (userUpdates.email) dataToUpdate.email = userUpdates.email;
-            if (userUpdates.name) dataToUpdate.name = userUpdates.name;
-            if (userUpdates.lastName) dataToUpdate.lastName = userUpdates.lastName;
-            if (userUpdates.role) dataToUpdate.role = userUpdates.role;
-            if (userUpdates.permissions) dataToUpdate.permissions = userUpdates.permissions;
-            if (userUpdates.password) dataToUpdate.password = userUpdates.password;
-            
-            dataToUpdate.lastModifiedDate = new Date();
-            dataToUpdate.lastModifiedBy = userUpdates.lastModifiedBy || 'system';
-
-            delete dataToUpdate.createdDate;
-            delete dataToUpdate.createdBy;
-
-            await userRef.update(dataToUpdate);
-
-            const updatedDoc = await userRef.get();
-
-            return UserMapper.toDomain({ id: updatedDoc.id, ...updatedDoc.data() });
-        } catch (error) {
-            throw error;
-        }
+      return UserMapper.toDomain(user);
+    } catch (error) {
+      if (error.code === 11000) {
+        const field = Object.keys(error.keyPattern)[0];
+        throw new Error(`Usuario con este ${field} ya existe`);
+      }
+      throw new Error(`Error actualizando usuario: ${error.message}`);
     }
+  }
 
-    async delete(id) {
-        try {
-            const docRef = this.collection.doc(id);
-            const doc = await docRef.get();
-
-            if (!doc.exists) {
-                throw new Error('User not found');
-            }
-
-            await docRef.delete();
-            return true;
-        } catch (error) {
-            throw error;
-        }
+  async delete(id) {
+    try {
+      const user = await User.findByIdAndDelete(id);
+      if (!user) {
+        throw new Error('Usuario no encontrado');
+      }
+      return true;
+    } catch (error) {
+      throw new Error(`Error eliminando usuario: ${error.message}`);
     }
+  }
 
-    async getAll(pageSize = 10, lastVisible = null) {
-        try {
-            let query = this.collection.orderBy('createdDate').limit(pageSize);
+  async getAll(pageSize = 10, lastVisible = null) {
+    try {
+      let query = User.find().sort({ createdDate: -1 }).limit(pageSize);
 
-            if (lastVisible) {
-                query = query.startAfter(lastVisible);
-            }
+      if (lastVisible) {
+        query = query.where('_id').lt(lastVisible);
+      }
 
-            const snapshot = await query.get();
+      const users = await query.lean();
+      const lastDoc = users[users.length - 1];
 
-            if (snapshot.empty) {
-                return {
-                    users: [],
-                    lastVisible: null
-                };
-            }
-
-            const users = snapshot.docs.map(doc => UserMapper.toDomain({ id: doc.id, ...doc.data() }));
-
-            const lastDoc = snapshot.docs[snapshot.docs.length - 1];
-
-            return {
-                users,
-                lastVisible: lastDoc
-            };
-        } catch (error) {
-            throw error;
-        }
+      return {
+        users: users.map(user => UserMapper.toDomain(user)),
+        lastVisible: lastDoc ? lastDoc._id : null
+      };
+    } catch (error) {
+      throw new Error(`Error obteniendo usuarios: ${error.message}`);
     }
+  }
 
-    async getDocSnapshotById(id) {
-        const docRef = this.collection.doc(id);
-        const doc = await docRef.get();
-        if (!doc.exists) {
-            throw new Error('No se encontró el documento con el ID proporcionado');
-        }
-        return doc;
+  async getDocSnapshotById(id) {
+    try {
+      const user = await User.findById(id).lean();
+      return user ? { id: user._id, ...user } : null;
+    } catch (error) {
+      throw new Error(`Error obteniendo snapshot de usuario: ${error.message}`);
     }
+  }
 
+  async count() {
+    try {
+      return await User.countDocuments();
+    } catch (error) {
+      throw new Error(`Error contando usuarios: ${error.message}`);
+    }
+  }
+
+  async existsByUsername(username) {
+    try {
+      const count = await User.countDocuments({ username });
+      return count > 0;
+    } catch (error) {
+      throw new Error(`Error verificando existencia de username: ${error.message}`);
+    }
+  }
+
+  async existsByEmail(email) {
+    try {
+      const count = await User.countDocuments({ email });
+      return count > 0;
+    } catch (error) {
+      throw new Error(`Error verificando existencia de email: ${error.message}`);
+    }
+  }
 }
 
 module.exports = UserRepository;

@@ -2,6 +2,7 @@ const User = require('../../domain/user');
 
 class UserMapper {
     static toDomain(userDocument) {
+        if (!userDocument) return userDocument;
         return new User({
             id: userDocument.id,
             createdDate: userDocument.createdDate,
@@ -35,6 +36,7 @@ class UserMapper {
     }
 
     static toClient(user) {
+        if (!user) return user;
         return {
             id: user.id,
             username: user.username,
@@ -42,8 +44,7 @@ class UserMapper {
             name: user.name,
             lastName: user.lastName,
             role: user.role,
-            permissions: user.permissions || [],
-            createdDate: user.createdDate
+            permissions: user.permissions || []
         };
     }
 }

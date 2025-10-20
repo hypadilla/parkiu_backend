@@ -6,6 +6,10 @@ class BaseDomainModel {
         this.lastModifiedDate = lastModifiedDate || new Date();
         this.lastModifiedBy = lastModifiedBy;
     }
+
+    toPlainObject() {
+        return { ...this };
+    }
 }
 
 module.exports = BaseDomainModel;

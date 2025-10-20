@@ -1,16 +1,23 @@
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
+const { createServer } = require('http');
 const { swaggerUi, swaggerSpec } = require('../docs/swagger');
 
 const logger = require('../core/utils/logger');
 const errorHandler = require('./middlewares/errorHandler');
+const mongoService = require('../infrastructure/database/mongoService');
+const webSocketService = require('../infrastructure/websocket/websocketService');
 
 const UserRepository = require("../infrastructure/repositories/userRepository");
 const JwtAuthService = require("../infrastructure/services/jwtAuthService");
 const TokenBlacklist = require("../infrastructure/utils/tokenBlacklist");
 
 const app = express();
+const server = createServer(app);
+
+// Inicializar WebSocket
+const io = webSocketService.initialize(server);
 
 const userRepository = new UserRepository();
 const authService = new JwtAuthService('your-secret-key', '1h', userRepository);
@@ -46,4 +53,35 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-module.exports = app;
+// Función para inicializar la aplicación
+async function initializeApp() {
+  try {
+    // Conectar a MongoDB
+    await mongoService.connect();
+    
+    // Iniciar servicios de tiempo real
+    await webSocketService.startRealtimeServices();
+    
+    console.log('✅ Aplicación inicializada correctamente');
+  } catch (error) {
+    console.error('❌ Error inicializando aplicación:', error);
+    process.exit(1);
+  }
+}
+
+// Función para cerrar la aplicación
+async function closeApp() {
+  try {
+    await webSocketService.stopRealtimeServices();
+    await mongoService.disconnect();
+    console.log('✅ Aplicación cerrada correctamente');
+  } catch (error) {
+    console.error('❌ Error cerrando aplicación:', error);
+  }
+}
+
+// Manejar cierre graceful
+process.on('SIGINT', closeApp);
+process.on('SIGTERM', closeApp);
+
+module.exports = { app, server, initializeApp, closeApp };
