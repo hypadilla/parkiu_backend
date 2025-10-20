@@ -2,50 +2,106 @@ const UpdateUserCommand = require('../../../src/core/services/features/user/comm
 
 describe('UpdateUserCommand', () => {
   describe('Constructor', () => {
-    it('should create command with id and update data', () => {
-      const id = '1';
-      const updateData = {
-        name: 'Updated',
+    it('should create command with all properties', () => {
+      const command = new UpdateUserCommand('1', {
         email: 'updated@example.com',
-        password: 'newpassword123'
-      };
-
-      const command = new UpdateUserCommand(id, updateData);
+        password: 'newpassword123',
+        name: 'Updated',
+        lastName: 'User',
+        role: 'admin',
+        permissions: ['manage_users', 'view_reports']
+      });
 
       expect(command.id).toBe('1');
-      expect(command.updateData).toEqual(updateData);
+      expect(command.email).toBe('updated@example.com');
+      expect(command.password).toBe('newpassword123');
+      expect(command.name).toBe('Updated');
+      expect(command.lastName).toBe('User');
+      expect(command.role).toBe('admin');
+      expect(command.permissions).toEqual(['manage_users', 'view_reports']);
     });
 
-    it('should create command with minimal update data', () => {
-      const id = '2';
-      const updateData = {
+    it('should create command with partial properties', () => {
+      const command = new UpdateUserCommand('1', {
+        email: 'updated@example.com',
         name: 'Updated'
-      };
+      });
 
-      const command = new UpdateUserCommand(id, updateData);
-
-      expect(command.id).toBe('2');
-      expect(command.updateData).toEqual(updateData);
+      expect(command.id).toBe('1');
+      expect(command.email).toBe('updated@example.com');
+      expect(command.password).toBeUndefined();
+      expect(command.name).toBe('Updated');
+      expect(command.lastName).toBeUndefined();
+      expect(command.role).toBeUndefined();
+      expect(command.permissions).toEqual([]);
     });
 
     it('should handle empty update data', () => {
-      const id = '3';
-      const updateData = {};
+      const command = new UpdateUserCommand('1', {});
 
-      const command = new UpdateUserCommand(id, updateData);
-
-      expect(command.id).toBe('3');
-      expect(command.updateData).toEqual({});
+      expect(command.id).toBe('1');
+      expect(command.email).toBeUndefined();
+      expect(command.password).toBeUndefined();
+      expect(command.name).toBeUndefined();
+      expect(command.lastName).toBeUndefined();
+      expect(command.role).toBeUndefined();
+      expect(command.permissions).toEqual([]);
     });
 
     it('should handle null update data', () => {
-      const id = '4';
-      const updateData = null;
+      const command = new UpdateUserCommand('1', null);
 
-      const command = new UpdateUserCommand(id, updateData);
+      expect(command.id).toBe('1');
+      expect(command.email).toBeUndefined();
+      expect(command.password).toBeUndefined();
+      expect(command.name).toBeUndefined();
+      expect(command.lastName).toBeUndefined();
+      expect(command.role).toBeUndefined();
+      expect(command.permissions).toEqual([]);
+    });
 
-      expect(command.id).toBe('4');
-      expect(command.updateData).toBeNull();
+    it('should handle undefined update data', () => {
+      const command = new UpdateUserCommand('1', undefined);
+
+      expect(command.id).toBe('1');
+      expect(command.email).toBeUndefined();
+      expect(command.password).toBeUndefined();
+      expect(command.name).toBeUndefined();
+      expect(command.lastName).toBeUndefined();
+      expect(command.role).toBeUndefined();
+      expect(command.permissions).toEqual([]);
+    });
+
+    it('should handle custom permissions', () => {
+      const command = new UpdateUserCommand('1', {
+        permissions: ['custom_permission1', 'custom_permission2']
+      });
+
+      expect(command.permissions).toEqual(['custom_permission1', 'custom_permission2']);
+    });
+
+    it('should handle empty permissions array', () => {
+      const command = new UpdateUserCommand('1', {
+        permissions: []
+      });
+
+      expect(command.permissions).toEqual([]);
+    });
+
+    it('should handle null permissions', () => {
+      const command = new UpdateUserCommand('1', {
+        permissions: null
+      });
+
+      expect(command.permissions).toBeNull();
+    });
+
+    it('should handle undefined permissions', () => {
+      const command = new UpdateUserCommand('1', {
+        permissions: undefined
+      });
+
+      expect(command.permissions).toEqual([]);
     });
   });
 });

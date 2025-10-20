@@ -2,30 +2,28 @@ const GetAuthenticatedUserQuery = require('../../../src/core/services/features/u
 
 describe('GetAuthenticatedUserQuery', () => {
   describe('Constructor', () => {
-    it('should create query with userId', () => {
-      const queryData = {
-        userId: '1'
-      };
+    it('should create query with id', () => {
+      const query = new GetAuthenticatedUserQuery('1');
 
-      const query = new GetAuthenticatedUserQuery(queryData);
-
-      expect(query.userId).toBe('1');
+      expect(query.id).toBe('1');
     });
 
-    it('should handle empty query data', () => {
-      const queryData = {};
+    it('should handle empty id', () => {
+      const query = new GetAuthenticatedUserQuery('');
 
-      const query = new GetAuthenticatedUserQuery(queryData);
-
-      expect(query.userId).toBeUndefined();
+      expect(query.id).toBe('');
     });
 
-    it('should handle null query data', () => {
-      const queryData = null;
+    it('should handle null id', () => {
+      const query = new GetAuthenticatedUserQuery(null);
 
-      const query = new GetAuthenticatedUserQuery(queryData);
+      expect(query.id).toBeNull();
+    });
 
-      expect(query.userId).toBeUndefined();
+    it('should handle undefined id', () => {
+      const query = new GetAuthenticatedUserQuery(undefined);
+
+      expect(query.id).toBeUndefined();
     });
   });
 });

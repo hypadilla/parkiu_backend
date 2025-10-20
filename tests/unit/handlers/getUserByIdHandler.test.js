@@ -1,56 +1,122 @@
 const GetUserByIdHandler = require('../../../src/core/services/features/user/queries/getUserByIdQuery/getUserByIdHandler');
 const User = require('../../../src/core/domain/user');
+const UserNotFoundError = require('../../../src/core/errors/userNotFoundError');
 
 describe('GetUserByIdHandler', () => {
-  let mockUserRepository;
   let handler;
+  let mockUserRepository;
 
   beforeEach(() => {
     mockUserRepository = {
       getById: jest.fn()
     };
     handler = new GetUserByIdHandler(mockUserRepository);
+    jest.clearAllMocks();
   });
 
   describe('handle', () => {
     it('should return user when found', async () => {
-      const query = { id: '1' };
-      const userData = {
+      const query = {
+        id: '1'
+      };
+
+      const mockUser = new User({
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com'
+      });
+
+      mockUserRepository.getById.mockResolvedValue(mockUser);
+
+      const result = await handler.handle(query);
+
+      expect(mockUserRepository.getById).toHaveBeenCalledWith('1');
+      expect(result).toEqual(expect.objectContaining({
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com'
+      }));
+    });
+
+    it('should throw error when user not found', async () => {
+      const query = {
+        id: 'nonexistent'
+      };
+
+      mockUserRepository.getById.mockResolvedValue(null);
+
+      await expect(handler.handle(query)).rejects.toThrow(UserNotFoundError);
+      expect(mockUserRepository.getById).toHaveBeenCalledWith('nonexistent');
+    });
+
+    it('should handle repository errors', async () => {
+      const query = {
+        id: '1'
+      };
+
+      mockUserRepository.getById.mockRejectedValue(new Error('Database error'));
+
+      await expect(handler.handle(query)).rejects.toThrow('Database error');
+    });
+
+    it('should handle empty id', async () => {
+      const query = {
+        id: ''
+      };
+
+      mockUserRepository.getById.mockResolvedValue(null);
+
+      await expect(handler.handle(query)).rejects.toThrow(UserNotFoundError);
+    });
+
+    it('should handle null id', async () => {
+      const query = {
+        id: null
+      };
+
+      mockUserRepository.getById.mockResolvedValue(null);
+
+      await expect(handler.handle(query)).rejects.toThrow(UserNotFoundError);
+    });
+
+    it('should handle undefined id', async () => {
+      const query = {
+        id: undefined
+      };
+
+      mockUserRepository.getById.mockResolvedValue(null);
+
+      await expect(handler.handle(query)).rejects.toThrow(UserNotFoundError);
+    });
+
+    it('should return user with all properties', async () => {
+      const query = {
+        id: '1'
+      };
+
+      const mockUser = new User({
         id: '1',
         username: 'testuser',
         email: 'test@example.com',
         name: 'Test',
         lastName: 'User',
-        role: 'USER',
-        permissions: ['CAN_VIEW']
-      };
+        role: 'admin',
+        permissions: ['manage_users', 'view_reports']
+      });
 
-      const user = new User(userData);
-      mockUserRepository.getById.mockResolvedValue(user);
+      mockUserRepository.getById.mockResolvedValue(mockUser);
 
       const result = await handler.handle(query);
 
-      expect(mockUserRepository.getById).toHaveBeenCalledWith('1');
-      expect(result).toBeInstanceOf(User);
-      expect(result.id).toBe('1');
-      expect(result.username).toBe('testuser');
-    });
-
-    it('should throw error when user not found', async () => {
-      const query = { id: 'nonexistent' };
-
-      mockUserRepository.getById.mockResolvedValue(null);
-
-      await expect(handler.handle(query)).rejects.toThrow('Usuario no encontrado');
-      expect(mockUserRepository.getById).toHaveBeenCalledWith('nonexistent');
-    });
-
-    it('should handle repository errors', async () => {
-      const query = { id: '1' };
-
-      mockUserRepository.getById.mockRejectedValue(new Error('Database error'));
-
-      await expect(handler.handle(query)).rejects.toThrow('Database error');
+      expect(result).toEqual(expect.objectContaining({
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com',
+        name: 'Test',
+        lastName: 'User',
+        role: 'admin',
+        permissions: ['manage_users', 'view_reports']
+      }));
     });
   });
 });

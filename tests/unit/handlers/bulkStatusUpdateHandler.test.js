@@ -1,92 +1,159 @@
 const BulkStatusUpdateHandler = require('../../../src/core/services/features/parkingCell/command/bulkStatusUpdate/bulkStatusUpdateHandler');
 
 describe('BulkStatusUpdateHandler', () => {
-  let mockParkingCellRepository;
   let handler;
+  let mockParkingCellRepository;
 
   beforeEach(() => {
     mockParkingCellRepository = {
-      bulkUpdate: jest.fn()
+      bulkStatusUpdate: jest.fn()
     };
     handler = new BulkStatusUpdateHandler(mockParkingCellRepository);
+    jest.clearAllMocks();
   });
 
   describe('handle', () => {
-    it('should bulk update parking cells successfully', async () => {
-      const command = {
-        updates: [
-          { id: 'cell1', state: 'ocupado' },
-          { id: 'cell2', state: 'disponible' },
-          { id: 'cell3', state: 'inhabilitado' }
-        ]
+    it('should process bulk status update successfully', async () => {
+      const data = {
+        data: {
+          sectores: [
+            {
+              celdas: {
+                '1': 'ocupado',
+                '2': 'disponible',
+                '3': 'reservado'
+              }
+            },
+            {
+              celdas: {
+                '4': 'inhabilitado',
+                '5': 'disponible'
+              }
+            }
+          ]
+        }
       };
 
-      const mockResult = { success: true, updated: 3 };
-      mockParkingCellRepository.bulkUpdate.mockResolvedValue(mockResult);
+      mockParkingCellRepository.bulkStatusUpdate.mockResolvedValue();
 
-      const result = await handler.handle(command);
+      await handler.handle(data);
 
-      expect(mockParkingCellRepository.bulkUpdate).toHaveBeenCalledWith(command.updates);
-      expect(result).toEqual(mockResult);
+      expect(mockParkingCellRepository.bulkStatusUpdate).toHaveBeenCalledWith([
+        { idStatic: 1, state: 'ocupado' },
+        { idStatic: 2, state: 'disponible' },
+        { idStatic: 3, state: 'reservado' },
+        { idStatic: 4, state: 'inhabilitado' },
+        { idStatic: 5, state: 'disponible' }
+      ]);
     });
 
-    it('should handle empty updates array', async () => {
-      const command = {
-        updates: []
+    it('should handle empty sectores', async () => {
+      const data = {
+        data: {
+          sectores: []
+        }
       };
 
-      const mockResult = { success: true, updated: 0 };
-      mockParkingCellRepository.bulkUpdate.mockResolvedValue(mockResult);
+      mockParkingCellRepository.bulkStatusUpdate.mockResolvedValue();
 
-      const result = await handler.handle(command);
+      await handler.handle(data);
 
-      expect(mockParkingCellRepository.bulkUpdate).toHaveBeenCalledWith([]);
-      expect(result).toEqual(mockResult);
+      expect(mockParkingCellRepository.bulkStatusUpdate).toHaveBeenCalledWith([]);
     });
 
-    it('should handle single update', async () => {
-      const command = {
-        updates: [
-          { id: 'cell1', state: 'ocupado' }
-        ]
+    it('should handle empty celdas in sector', async () => {
+      const data = {
+        data: {
+          sectores: [
+            {
+              celdas: {}
+            }
+          ]
+        }
       };
 
-      const mockResult = { success: true, updated: 1 };
-      mockParkingCellRepository.bulkUpdate.mockResolvedValue(mockResult);
+      mockParkingCellRepository.bulkStatusUpdate.mockResolvedValue();
 
-      const result = await handler.handle(command);
+      await handler.handle(data);
 
-      expect(mockParkingCellRepository.bulkUpdate).toHaveBeenCalledWith([{ id: 'cell1', state: 'ocupado' }]);
-      expect(result).toEqual(mockResult);
+      expect(mockParkingCellRepository.bulkStatusUpdate).toHaveBeenCalledWith([]);
     });
 
     it('should handle repository errors', async () => {
-      const command = {
-        updates: [
-          { id: 'cell1', state: 'ocupado' }
-        ]
+      const data = {
+        data: {
+          sectores: [
+            {
+              celdas: {
+                '1': 'ocupado'
+              }
+            }
+          ]
+        }
       };
 
-      mockParkingCellRepository.bulkUpdate.mockRejectedValue(new Error('Bulk update error'));
+      mockParkingCellRepository.bulkStatusUpdate.mockRejectedValue(new Error('Database error'));
 
-      await expect(handler.handle(command)).rejects.toThrow('Bulk update error');
+      await expect(handler.handle(data)).rejects.toThrow('Database error');
     });
 
-    it('should handle large batch updates', async () => {
-      const updates = Array(100).fill().map((_, i) => ({
-        id: `cell${i}`,
-        state: i % 2 === 0 ? 'disponible' : 'ocupado'
+    it('should handle invalid idStatic values', async () => {
+      const data = {
+        data: {
+          sectores: [
+            {
+              celdas: {
+                'invalid': 'ocupado',
+                '1.5': 'disponible'
+              }
+            }
+          ]
+        }
+      };
+
+      mockParkingCellRepository.bulkStatusUpdate.mockResolvedValue();
+
+      await handler.handle(data);
+
+      const callArgs = mockParkingCellRepository.bulkStatusUpdate.mock.calls[0][0];
+      expect(callArgs).toHaveLength(2);
+      expect(callArgs[0]).toEqual(expect.objectContaining({
+        idStatic: expect.any(Number),
+        state: 'ocupado'
       }));
+      expect(callArgs[1]).toEqual({
+        idStatic: 1,
+        state: 'disponible'
+      });
+      expect(isNaN(callArgs[0].idStatic)).toBe(true);
+    });
 
-      const command = { updates };
+    it('should handle multiple sectores with same cell IDs', async () => {
+      const data = {
+        data: {
+          sectores: [
+            {
+              celdas: {
+                '1': 'ocupado'
+              }
+            },
+            {
+              celdas: {
+                '1': 'disponible' // Same ID, should be processed
+              }
+            }
+          ]
+        }
+      };
 
-      const mockResult = { success: true, updated: 100 };
-      mockParkingCellRepository.bulkUpdate.mockResolvedValue(mockResult);
+      mockParkingCellRepository.bulkStatusUpdate.mockResolvedValue();
 
-      const result = await handler.handle(command);
+      await handler.handle(data);
 
-      expect(mockParkingCellRepository.bulkUpdate).toHaveBeenCalledWith(updates);
-      expect(result).toEqual(mockResult);
+      expect(mockParkingCellRepository.bulkStatusUpdate).toHaveBeenCalledWith([
+        { idStatic: 1, state: 'ocupado' },
+        { idStatic: 1, state: 'disponible' }
+      ]);
     });
   });
 });

@@ -1,21 +1,30 @@
 const ParkingCellRepository = require('../../../src/infrastructure/repositories/parkingCellRepository');
-const ParkingCell = require('../../../src/core/domain/parkingCell');
+const ParkingCellDomain = require('../../../src/core/domain/parkingCell');
+const ReservationDetails = require('../../../src/core/domain/reservationDetails');
+const ParkingCellMapper = require('../../../src/core/services/mapping/parkingCellMapper');
 
-// Mock Firebase
-const mockFirebase = {
-  collection: jest.fn(() => ({
-    get: jest.fn(),
-    doc: jest.fn(() => ({
-      set: jest.fn()
-    }))
-  })),
-  batch: jest.fn(() => ({
-    update: jest.fn(),
-    commit: jest.fn().mockResolvedValue()
-  }))
+// Mock the ParkingCell model
+const mockParkingCellInstance = {
+  save: jest.fn(),
+  toObject: jest.fn()
 };
 
-jest.mock('../../../src/infrastructure/database/firebaseService', () => mockFirebase);
+jest.mock('../../../src/infrastructure/database/models/ParkingCell', () => {
+  const mockConstructor = jest.fn(() => mockParkingCellInstance);
+  mockConstructor.find = jest.fn().mockReturnThis();
+  mockConstructor.findById = jest.fn();
+  mockConstructor.findOne = jest.fn();
+  mockConstructor.findOneAndUpdate = jest.fn();
+  mockConstructor.updateMany = jest.fn();
+  mockConstructor.bulkWrite = jest.fn();
+  mockConstructor.countDocuments = jest.fn();
+  mockConstructor.lean = jest.fn();
+  mockConstructor.sort = jest.fn().mockReturnThis();
+  mockConstructor.limit = jest.fn().mockReturnThis();
+  return mockConstructor;
+});
+
+const ParkingCell = require('../../../src/infrastructure/database/models/ParkingCell');
 
 describe('ParkingCellRepository', () => {
   let repository;
@@ -28,37 +37,34 @@ describe('ParkingCellRepository', () => {
   describe('getAll', () => {
     it('should return all parking cells', async () => {
       const mockCells = [
-        { id: 'cell1', idStatic: 1, state: 'disponible' },
-        { id: 'cell2', idStatic: 2, state: 'ocupado' }
+        { _id: '507f1f77bcf86cd799439011', idStatic: 1, state: 'disponible' },
+        { _id: '507f1f77bcf86cd799439012', idStatic: 2, state: 'ocupado' }
       ];
 
-      const mockDocs = mockCells.map(cell => ({
-        data: () => cell,
-        id: cell.id
-      }));
-
-      const mockQuerySnapshot = {
-        empty: false,
-        docs: mockDocs
+      const mockQuery = {
+        sort: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue(mockCells)
       };
 
-      mockFirebase.collection().get.mockResolvedValue(mockQuerySnapshot);
+      ParkingCell.find.mockReturnValue(mockQuery);
 
       const result = await repository.getAll();
 
-      expect(mockFirebase.collection).toHaveBeenCalledWith('parkingCells');
+      expect(ParkingCell.find).toHaveBeenCalled();
       expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({ id: 'cell1', ...mockCells[0] });
-      expect(result[1]).toEqual({ id: 'cell2', ...mockCells[1] });
+      expect(result[0]).toEqual(expect.objectContaining({
+        idStatic: 1,
+        state: 'disponible'
+      }));
     });
 
     it('should return empty array when no cells exist', async () => {
-      const mockQuerySnapshot = {
-        empty: true,
-        docs: []
+      const mockQuery = {
+        sort: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue([])
       };
 
-      mockFirebase.collection().get.mockResolvedValue(mockQuerySnapshot);
+      ParkingCell.find.mockReturnValue(mockQuery);
 
       const result = await repository.getAll();
 
@@ -66,89 +72,225 @@ describe('ParkingCellRepository', () => {
     });
 
     it('should handle database errors', async () => {
-      mockFirebase.collection().get.mockRejectedValue(new Error('Database error'));
+      const mockQuery = {
+        sort: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockRejectedValue(new Error('Database error'))
+      };
+
+      ParkingCell.find.mockReturnValue(mockQuery);
 
       await expect(repository.getAll()).rejects.toThrow('Database error');
     });
   });
 
-  describe('upsert', () => {
-    it('should upsert parking cell successfully', async () => {
-      const cellData = {
-        id: 'cell1',
-        idStatic: 1,
-        state: 'disponible',
-        reservationDetails: null
-      };
-
-      const mockDoc = {
-        id: 'cell1',
-        set: jest.fn().mockResolvedValue()
-      };
-
-      mockFirebase.collection().doc.mockReturnValue(mockDoc);
-
-      const result = await repository.upsert(cellData);
-
-      expect(mockFirebase.collection).toHaveBeenCalledWith('parkingCells');
-      expect(mockDoc.set).toHaveBeenCalledWith(cellData);
-      expect(result).toEqual({ id: 'cell1', ...cellData });
-    });
-
-    it('should handle upsert errors', async () => {
-      const cellData = {
-        id: 'cell1',
+  describe('getByIdStatic', () => {
+    it('should return cell when found', async () => {
+      const mockCellData = {
+        _id: '507f1f77bcf86cd799439011',
         idStatic: 1,
         state: 'disponible'
       };
 
-      const mockDoc = {
-        id: 'cell1',
-        set: jest.fn().mockRejectedValue(new Error('Upsert error'))
-      };
+      ParkingCell.findOne.mockReturnValue({
+        lean: jest.fn().mockResolvedValue(mockCellData)
+      });
 
-      mockFirebase.collection().doc.mockReturnValue(mockDoc);
+      const result = await repository.getByIdStatic(1);
 
-      await expect(repository.upsert(cellData)).rejects.toThrow('Upsert error');
+      expect(ParkingCell.findOne).toHaveBeenCalledWith({ idStatic: 1 });
+      expect(result).toEqual(expect.objectContaining({
+        idStatic: 1,
+        state: 'disponible'
+      }));
+    });
+
+    it('should return null when cell not found', async () => {
+      ParkingCell.findOne.mockReturnValue({
+        lean: jest.fn().mockResolvedValue(null)
+      });
+
+      const result = await repository.getByIdStatic(999);
+
+      expect(result).toBeNull();
     });
   });
 
-  describe('bulkUpdate', () => {
-    it('should bulk update parking cells successfully', async () => {
-      const updates = [
-        { id: 'cell1', state: 'ocupado' },
-        { id: 'cell2', state: 'disponible' }
-      ];
+  describe('upsertByStaticId', () => {
+    it('should upsert parking cell successfully', async () => {
+      const idStatic = 1;
+      const newState = 'ocupado';
+      const startTime = new Date();
+      const endTime = new Date(startTime.getTime() + 3600000); // 1 hora después
+      const reservationDetails = new ReservationDetails({
+        reservedBy: 'user123',
+        startTime: startTime,
+        endTime: endTime,
+        reason: 'Meeting'
+      });
 
-      const mockBatch = {
-        update: jest.fn(),
-        commit: jest.fn().mockResolvedValue()
+      const mockUpsertedCell = {
+        _id: '507f1f77bcf86cd799439011',
+        idStatic,
+        state: newState,
+        reservationDetails
       };
 
-      mockFirebase.batch.mockReturnValue(mockBatch);
-      mockFirebase.collection().doc.mockReturnValue({});
+      ParkingCell.findOneAndUpdate.mockReturnValue({
+        lean: jest.fn().mockResolvedValue(mockUpsertedCell)
+      });
 
-      const result = await repository.bulkUpdate(updates);
+      const result = await repository.upsertByStaticId(idStatic, newState, reservationDetails);
 
-      expect(mockFirebase.collection).toHaveBeenCalledWith('parkingCells');
-      expect(mockBatch.commit).toHaveBeenCalled();
-      expect(result).toBeDefined();
+      expect(ParkingCell.findOneAndUpdate).toHaveBeenCalledWith(
+        { idStatic },
+        {
+          state: newState,
+          lastModifiedDate: expect.any(Date),
+          lastModifiedBy: 'system'
+        },
+        {
+          upsert: true,
+          new: true,
+          runValidators: true
+        }
+      );
+      expect(result).toBe('507f1f77bcf86cd799439011');
+    });
+
+    it('should handle upsert errors', async () => {
+      ParkingCell.findOneAndUpdate.mockReturnValue({
+        lean: jest.fn().mockRejectedValue(new Error('Upsert error'))
+      });
+
+      await expect(repository.upsertByStaticId(1, 'ocupado')).rejects.toThrow('Upsert error');
+    });
+  });
+
+  describe('bulkStatusUpdate', () => {
+    it('should bulk update parking cells successfully', async () => {
+      const cells = [
+        { idStatic: 1, state: 'ocupado' },
+        { idStatic: 2, state: 'disponible' }
+      ];
+
+      const mockBulkResult = {
+        upsertedIds: ['507f1f77bcf86cd799439011', '507f1f77bcf86cd799439012']
+      };
+
+      ParkingCell.bulkWrite.mockResolvedValue(mockBulkResult);
+
+      const result = await repository.bulkStatusUpdate(cells);
+
+      expect(ParkingCell.bulkWrite).toHaveBeenCalled();
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        idStatic: 1,
+        status: 'success',
+        docId: '507f1f77bcf86cd799439011'
+      });
     });
 
     it('should handle bulk update errors', async () => {
-      const updates = [
-        { id: 'cell1', state: 'ocupado' }
+      const cells = [{ idStatic: 1, state: 'invalid_state' }];
+
+      ParkingCell.bulkWrite.mockRejectedValue(new Error('Bulk update error'));
+
+      await expect(repository.bulkStatusUpdate(cells)).rejects.toThrow('Bulk update error');
+    });
+  });
+
+  describe('getByState', () => {
+    it('should return cells by state', async () => {
+      const mockCells = [
+        { _id: '507f1f77bcf86cd799439011', idStatic: 1, state: 'disponible' },
+        { _id: '507f1f77bcf86cd799439012', idStatic: 2, state: 'disponible' }
       ];
 
-      const mockBatch = {
-        update: jest.fn(),
-        commit: jest.fn().mockRejectedValue(new Error('Bulk update error'))
+      const mockQuery = {
+        sort: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue(mockCells)
       };
 
-      mockFirebase.batch.mockReturnValue(mockBatch);
-      mockFirebase.collection().doc.mockReturnValue({});
+      ParkingCell.find.mockReturnValue(mockQuery);
 
-      await expect(repository.bulkUpdate(updates)).rejects.toThrow('Bulk update error');
+      const result = await repository.getByState('disponible');
+
+      expect(ParkingCell.find).toHaveBeenCalledWith({ state: 'disponible' });
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual(expect.objectContaining({
+        idStatic: 1,
+        state: 'disponible'
+      }));
+    });
+  });
+
+  describe('getReservedByUser', () => {
+    it('should return cells reserved by user', async () => {
+      const startTime = new Date();
+      const endTime = new Date(startTime.getTime() + 3600000); // 1 hora después
+      const mockCells = [
+        { 
+          _id: '507f1f77bcf86cd799439011', 
+          idStatic: 1, 
+          state: 'reservado',
+          reservationDetails: {
+            reservedBy: 'user123',
+            startTime: startTime,
+            endTime: endTime,
+            reason: 'Meeting'
+          }
+        }
+      ];
+
+      const mockQuery = {
+        sort: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue(mockCells)
+      };
+
+      ParkingCell.find.mockReturnValue(mockQuery);
+
+      const result = await repository.getReservedByUser('user123');
+
+      expect(ParkingCell.find).toHaveBeenCalledWith({
+        state: 'reservado',
+        'reservationDetails.reservedBy': 'user123'
+      });
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('countByState', () => {
+    it('should return count by state', async () => {
+      ParkingCell.countDocuments.mockResolvedValue(5);
+
+      const result = await repository.countByState('disponible');
+
+      expect(ParkingCell.countDocuments).toHaveBeenCalledWith({ state: 'disponible' });
+      expect(result).toBe(5);
+    });
+  });
+
+  describe('getAvailableCells', () => {
+    it('should return available cells', async () => {
+      const mockCells = [
+        { _id: '507f1f77bcf86cd799439011', idStatic: 1, state: 'disponible' }
+      ];
+
+      const mockQuery = {
+        sort: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue(mockCells)
+      };
+
+      ParkingCell.find.mockReturnValue(mockQuery);
+
+      const result = await repository.getAvailableCells();
+
+      expect(ParkingCell.find).toHaveBeenCalledWith({ state: 'disponible' });
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(expect.objectContaining({
+        idStatic: 1,
+        state: 'disponible'
+      }));
     });
   });
 });

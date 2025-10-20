@@ -3,29 +3,48 @@ const LogoutUserCommand = require('../../../src/core/services/features/auth/comm
 describe('LogoutUserCommand', () => {
   describe('Constructor', () => {
     it('should create command with token', () => {
-      const commandData = {
-        token: 'jwt-token-123'
-      };
+      const command = new LogoutUserCommand('valid-token');
 
-      const command = new LogoutUserCommand(commandData);
-
-      expect(command.token).toBe('jwt-token-123');
+      expect(command.token).toBe('valid-token');
     });
 
-    it('should handle empty command data', () => {
-      const commandData = {};
+    it('should handle empty token', () => {
+      const command = new LogoutUserCommand('');
 
-      const command = new LogoutUserCommand(commandData);
+      expect(command.token).toBe('');
+    });
+
+    it('should handle null token', () => {
+      const command = new LogoutUserCommand(null);
+
+      expect(command.token).toBeNull();
+    });
+
+    it('should handle undefined token', () => {
+      const command = new LogoutUserCommand(undefined);
 
       expect(command.token).toBeUndefined();
     });
 
-    it('should handle null command data', () => {
-      const commandData = null;
+    it('should handle long token', () => {
+      const longToken = 'a'.repeat(1000);
+      const command = new LogoutUserCommand(longToken);
 
-      const command = new LogoutUserCommand(commandData);
+      expect(command.token).toBe(longToken);
+    });
 
-      expect(command.token).toBeUndefined();
+    it('should handle special characters in token', () => {
+      const specialToken = 'token-with-special-chars!@#$%^&*()';
+      const command = new LogoutUserCommand(specialToken);
+
+      expect(command.token).toBe(specialToken);
+    });
+
+    it('should handle JWT format token', () => {
+      const jwtToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const command = new LogoutUserCommand(jwtToken);
+
+      expect(command.token).toBe(jwtToken);
     });
   });
 });

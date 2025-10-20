@@ -3,29 +3,41 @@ const RefreshTokenCommand = require('../../../src/core/services/features/auth/co
 describe('RefreshTokenCommand', () => {
   describe('Constructor', () => {
     it('should create command with refresh token', () => {
-      const commandData = {
-        refreshToken: 'refresh-token-123'
-      };
+      const command = new RefreshTokenCommand('valid-refresh-token');
 
-      const command = new RefreshTokenCommand(commandData);
-
-      expect(command.refreshToken).toBe('refresh-token-123');
+      expect(command.refreshToken).toBe('valid-refresh-token');
     });
 
-    it('should handle empty command data', () => {
-      const commandData = {};
+    it('should handle empty refresh token', () => {
+      const command = new RefreshTokenCommand('');
 
-      const command = new RefreshTokenCommand(commandData);
+      expect(command.refreshToken).toBe('');
+    });
+
+    it('should handle null refresh token', () => {
+      const command = new RefreshTokenCommand(null);
+
+      expect(command.refreshToken).toBeNull();
+    });
+
+    it('should handle undefined refresh token', () => {
+      const command = new RefreshTokenCommand(undefined);
 
       expect(command.refreshToken).toBeUndefined();
     });
 
-    it('should handle null command data', () => {
-      const commandData = null;
+    it('should handle long refresh token', () => {
+      const longToken = 'a'.repeat(1000);
+      const command = new RefreshTokenCommand(longToken);
 
-      const command = new RefreshTokenCommand(commandData);
+      expect(command.refreshToken).toBe(longToken);
+    });
 
-      expect(command.refreshToken).toBeUndefined();
+    it('should handle special characters in refresh token', () => {
+      const specialToken = 'token-with-special-chars!@#$%^&*()';
+      const command = new RefreshTokenCommand(specialToken);
+
+      expect(command.refreshToken).toBe(specialToken);
     });
   });
 });

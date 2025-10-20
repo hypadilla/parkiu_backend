@@ -1,56 +1,72 @@
 const GetUserByUsernameHandler = require('../../../src/core/services/features/user/queries/getUserByUsernameQuery/getUserByUsernameHandler');
 const User = require('../../../src/core/domain/user');
+const UserNotFoundError = require('../../../src/core/errors/userNotFoundError');
 
 describe('GetUserByUsernameHandler', () => {
-  let mockUserRepository;
   let handler;
+  let mockUserRepository;
 
   beforeEach(() => {
     mockUserRepository = {
       getByUsername: jest.fn()
     };
     handler = new GetUserByUsernameHandler(mockUserRepository);
+    jest.clearAllMocks();
   });
 
   describe('handle', () => {
     it('should return user when found', async () => {
-      const query = { username: 'testuser' };
-      const userData = {
-        id: '1',
-        username: 'testuser',
-        email: 'test@example.com',
-        name: 'Test',
-        lastName: 'User',
-        role: 'USER',
-        permissions: ['CAN_VIEW']
+      const query = {
+        username: 'testuser'
       };
 
-      const user = new User(userData);
-      mockUserRepository.getByUsername.mockResolvedValue(user);
+      const mockUser = new User({
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com'
+      });
+
+      mockUserRepository.getByUsername.mockResolvedValue(mockUser);
 
       const result = await handler.handle(query);
 
       expect(mockUserRepository.getByUsername).toHaveBeenCalledWith('testuser');
-      expect(result).toBeInstanceOf(User);
-      expect(result.id).toBe('1');
-      expect(result.username).toBe('testuser');
+      expect(result).toEqual(expect.objectContaining({
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com'
+      }));
     });
 
     it('should throw error when user not found', async () => {
-      const query = { username: 'nonexistent' };
+      const query = {
+        username: 'nonexistent'
+      };
 
       mockUserRepository.getByUsername.mockResolvedValue(null);
 
-      await expect(handler.handle(query)).rejects.toThrow('Usuario no encontrado');
+      await expect(handler.handle(query)).rejects.toThrow(UserNotFoundError);
       expect(mockUserRepository.getByUsername).toHaveBeenCalledWith('nonexistent');
     });
 
     it('should handle repository errors', async () => {
-      const query = { username: 'testuser' };
+      const query = {
+        username: 'testuser'
+      };
 
       mockUserRepository.getByUsername.mockRejectedValue(new Error('Database error'));
 
       await expect(handler.handle(query)).rejects.toThrow('Database error');
+    });
+
+    it('should handle empty username', async () => {
+      const query = {
+        username: ''
+      };
+
+      mockUserRepository.getByUsername.mockResolvedValue(null);
+
+      await expect(handler.handle(query)).rejects.toThrow(UserNotFoundError);
     });
   });
 });

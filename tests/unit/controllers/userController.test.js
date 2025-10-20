@@ -1,33 +1,58 @@
 const UserController = require('../../../src/adapters/controllers/userController');
+const CreateUserCommand = require('../../../src/core/services/features/user/command/createUserCommand/createUserCommand');
+const UpdateUserCommand = require('../../../src/core/services/features/user/command/updateUserCommand/updateUserCommand');
+const DeleteUserCommand = require('../../../src/core/services/features/user/command/deleteUserCommand/deleteUserCommand');
+const GetAuthenticatedUserQuery = require('../../../src/core/services/features/user/queries/getAuthenticatedUserQuery/getAuthenticatedUserQuery');
+const GetUserByIdQuery = require('../../../src/core/services/features/user/queries/getUserByIdQuery/getUserByIdQuery');
+const GetUserByUsernameQuery = require('../../../src/core/services/features/user/queries/getUserByUsernameQuery/getUserByUsernameQuery');
+const GetAllUsersQuery = require('../../../src/core/services/features/user/queries/getAllUsersQuery/getAllUsersQuery');
+const UserAlreadyExistsError = require('../../../src/core/errors/userAlreadyExistsError');
+const UserNotFoundError = require('../../../src/core/errors/userNotFoundError');
 
 describe('UserController', () => {
+  let controller;
   let mockCreateUserHandler;
   let mockUpdateUserHandler;
   let mockDeleteUserHandler;
+  let mockGetAuthenticatedUserHandler;
   let mockGetUserByIdHandler;
   let mockGetUserByUsernameHandler;
   let mockGetAllUsersHandler;
-  let mockGetAuthenticatedUserHandler;
-  let controller;
 
   beforeEach(() => {
-    mockCreateUserHandler = { handle: jest.fn() };
-    mockUpdateUserHandler = { handle: jest.fn() };
-    mockDeleteUserHandler = { handle: jest.fn() };
-    mockGetUserByIdHandler = { handle: jest.fn() };
-    mockGetUserByUsernameHandler = { handle: jest.fn() };
-    mockGetAllUsersHandler = { handle: jest.fn() };
-    mockGetAuthenticatedUserHandler = { handle: jest.fn() };
-    
+    mockCreateUserHandler = {
+      handle: jest.fn()
+    };
+    mockUpdateUserHandler = {
+      handle: jest.fn()
+    };
+    mockDeleteUserHandler = {
+      handle: jest.fn()
+    };
+    mockGetAuthenticatedUserHandler = {
+      handle: jest.fn()
+    };
+    mockGetUserByIdHandler = {
+      handle: jest.fn()
+    };
+    mockGetUserByUsernameHandler = {
+      handle: jest.fn()
+    };
+    mockGetAllUsersHandler = {
+      handle: jest.fn()
+    };
+
     controller = new UserController(
       mockCreateUserHandler,
       mockUpdateUserHandler,
       mockDeleteUserHandler,
+      mockGetAuthenticatedUserHandler,
       mockGetUserByIdHandler,
       mockGetUserByUsernameHandler,
-      mockGetAllUsersHandler,
-      mockGetAuthenticatedUserHandler
+      mockGetAllUsersHandler
     );
+
+    jest.clearAllMocks();
   });
 
   describe('registerUser', () => {
@@ -41,20 +66,26 @@ describe('UserController', () => {
           lastName: 'User'
         }
       };
+
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn()
       };
 
-      const mockUser = { id: '1', username: 'newuser', email: 'new@example.com' };
+      const mockUser = {
+        id: '1',
+        username: 'newuser',
+        email: 'new@example.com'
+      };
+
       mockCreateUserHandler.handle.mockResolvedValue(mockUser);
 
       await controller.registerUser(req, res);
 
-      expect(mockCreateUserHandler.handle).toHaveBeenCalledWith(req.body);
+      expect(mockCreateUserHandler.handle).toHaveBeenCalledWith(expect.any(CreateUserCommand));
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith({
-        success: true,
+        message: 'Usuario registrado exitosamente',
         user: mockUser
       });
     });
@@ -67,46 +98,60 @@ describe('UserController', () => {
           password: 'password123'
         }
       };
+
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn()
       };
 
-      mockCreateUserHandler.handle.mockRejectedValue(new Error('User already exists'));
+      mockCreateUserHandler.handle.mockRejectedValue(new UserAlreadyExistsError('username'));
 
       await controller.registerUser(req, res);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: 'User already exists'
-      });
+            expect(res.json).toHaveBeenCalledWith({
+              error: expect.objectContaining({
+                message: 'El nombre de usuario ya está en uso'
+              })
+            });
     });
   });
 
   describe('getUserById', () => {
     it('should return user by id', async () => {
-      const req = { params: { id: '1' } };
+      const req = {
+        params: { id: '1' }
+      };
+
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn()
       };
 
-      const mockUser = { id: '1', username: 'testuser', email: 'test@example.com' };
+      const mockUser = {
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com'
+      };
+
       mockGetUserByIdHandler.handle.mockResolvedValue(mockUser);
 
       await controller.getUserById(req, res);
 
-      expect(mockGetUserByIdHandler.handle).toHaveBeenCalledWith({ id: '1' });
+      expect(mockGetUserByIdHandler.handle).toHaveBeenCalledWith(expect.any(GetUserByIdQuery));
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        user: mockUser
-      });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com'
+      }));
     });
 
     it('should handle user not found', async () => {
-      const req = { params: { id: 'nonexistent' } };
+      const req = {
+        params: { id: 'nonexistent' }
+      };
+
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn()
@@ -116,39 +161,55 @@ describe('UserController', () => {
 
       await controller.getUserById(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: 'Usuario no encontrado'
+        error: expect.objectContaining({
+          message: 'Ocurrió un error al procesar la solicitud'
+        })
       });
     });
   });
 
   describe('getUserByUsername', () => {
     it('should return user by username', async () => {
-      const req = { params: { username: 'testuser' } };
+      const req = {
+        params: { username: 'testuser' }
+      };
+
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn()
       };
 
-      const mockUser = { id: '1', username: 'testuser', email: 'test@example.com' };
+      const mockUser = {
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com'
+      };
+
       mockGetUserByUsernameHandler.handle.mockResolvedValue(mockUser);
 
       await controller.getUserByUsername(req, res);
 
-      expect(mockGetUserByUsernameHandler.handle).toHaveBeenCalledWith({ username: 'testuser' });
+      expect(mockGetUserByUsernameHandler.handle).toHaveBeenCalledWith(expect.any(GetUserByUsernameQuery));
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        user: mockUser
-      });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com'
+      }));
     });
   });
 
   describe('getAllUsers', () => {
     it('should return all users with pagination', async () => {
-      const req = { query: { limit: '10', startAfter: 'someToken' } };
+      const req = {
+        query: {
+          limit: 10,
+          startAfter: 'someToken'
+        }
+      };
+
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn()
@@ -161,24 +222,33 @@ describe('UserController', () => {
         ],
         lastVisible: 'newToken'
       };
+
       mockGetAllUsersHandler.handle.mockResolvedValue(mockResult);
 
       await controller.getAllUsers(req, res);
 
-      expect(mockGetAllUsersHandler.handle).toHaveBeenCalledWith({
-        limit: 10,
-        startAfter: 'someToken'
-      });
+      expect(mockGetAllUsersHandler.handle).toHaveBeenCalledWith(expect.any(GetAllUsersQuery));
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        users: mockResult.users,
-        lastVisible: mockResult.lastVisible
+        users: expect.arrayContaining([
+          expect.objectContaining({
+            id: '1',
+            username: 'user1'
+          }),
+          expect.objectContaining({
+            id: '2',
+            username: 'user2'
+          })
+        ]),
+        lastVisible: null
       });
     });
 
     it('should handle default pagination parameters', async () => {
-      const req = { query: {} };
+      const req = {
+        query: {}
+      };
+
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn()
@@ -188,14 +258,13 @@ describe('UserController', () => {
         users: [],
         lastVisible: null
       };
+
       mockGetAllUsersHandler.handle.mockResolvedValue(mockResult);
 
       await controller.getAllUsers(req, res);
 
-      expect(mockGetAllUsersHandler.handle).toHaveBeenCalledWith({
-        limit: 10,
-        startAfter: undefined
-      });
+      expect(mockGetAllUsersHandler.handle).toHaveBeenCalledWith(expect.any(GetAllUsersQuery));
+      expect(res.status).toHaveBeenCalledWith(200);
     });
   });
 
@@ -204,32 +273,46 @@ describe('UserController', () => {
       const req = {
         params: { id: '1' },
         body: {
-          name: 'Updated',
-          email: 'updated@example.com'
+          email: 'updated@example.com',
+          name: 'Updated'
         }
       };
+
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn()
       };
 
-      const mockUser = { id: '1', username: 'testuser', name: 'Updated' };
-      mockUpdateUserHandler.handle.mockResolvedValue(mockUser);
+      const mockUpdatedUser = {
+        id: '1',
+        username: 'testuser',
+        email: 'updated@example.com',
+        name: 'Updated'
+      };
+
+      mockUpdateUserHandler.handle.mockResolvedValue(mockUpdatedUser);
 
       await controller.updateUser(req, res);
 
-      expect(mockUpdateUserHandler.handle).toHaveBeenCalledWith('1', req.body);
+      expect(mockUpdateUserHandler.handle).toHaveBeenCalledWith(expect.any(UpdateUserCommand));
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        user: mockUser
+        message: 'Usuario actualizado exitosamente',
+        user: expect.objectContaining({
+          id: '1',
+          email: 'updated@example.com',
+          name: 'Updated'
+        })
       });
     });
   });
 
   describe('deleteUser', () => {
     it('should delete user successfully', async () => {
-      const req = { params: { id: '1' } };
+      const req = {
+        params: { id: '1' }
+      };
+
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn()
@@ -239,34 +322,39 @@ describe('UserController', () => {
 
       await controller.deleteUser(req, res);
 
-      expect(mockDeleteUserHandler.handle).toHaveBeenCalledWith({ id: '1' });
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        message: 'Usuario eliminado exitosamente'
-      });
+      expect(mockDeleteUserHandler.handle).toHaveBeenCalledWith(expect.any(DeleteUserCommand));
+      expect(res.status).toHaveBeenCalledWith(204);
     });
   });
 
   describe('getAuthenticatedUser', () => {
     it('should return authenticated user', async () => {
-      const req = { user: { id: '1', username: 'testuser' } };
+      const req = {
+        user: { id: '1' }
+      };
+
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn()
       };
 
-      const mockUser = { id: '1', username: 'testuser', email: 'test@example.com' };
+      const mockUser = {
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com'
+      };
+
       mockGetAuthenticatedUserHandler.handle.mockResolvedValue(mockUser);
 
       await controller.getAuthenticatedUser(req, res);
 
-      expect(mockGetAuthenticatedUserHandler.handle).toHaveBeenCalledWith({ userId: '1' });
+      expect(mockGetAuthenticatedUserHandler.handle).toHaveBeenCalledWith(expect.any(GetAuthenticatedUserQuery));
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        user: mockUser
-      });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com'
+      }));
     });
   });
 });

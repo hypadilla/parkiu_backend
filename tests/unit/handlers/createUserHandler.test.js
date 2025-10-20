@@ -1,120 +1,180 @@
 const CreateUserHandler = require('../../../src/core/services/features/user/command/createUserCommand/createUserHandler');
 const User = require('../../../src/core/domain/user');
+const bcrypt = require('bcrypt');
+
+// Mock bcrypt
+jest.mock('bcrypt');
 
 describe('CreateUserHandler', () => {
-  let mockUserRepository;
-  let mockAuthService;
   let handler;
+  let mockUserRepository;
 
   beforeEach(() => {
     mockUserRepository = {
-      getByUsername: jest.fn(),
       create: jest.fn()
     };
-    mockAuthService = {
-      hashPassword: jest.fn()
-    };
-    handler = new CreateUserHandler(mockUserRepository, mockAuthService);
+    handler = new CreateUserHandler(mockUserRepository);
+    jest.clearAllMocks();
   });
 
   describe('handle', () => {
     it('should create user successfully', async () => {
       const command = {
-        username: 'testuser',
-        email: 'test@example.com',
+        username: 'newuser',
+        email: 'new@example.com',
         password: 'password123',
-        name: 'Test',
+        name: 'New',
         lastName: 'User'
       };
 
       const hashedPassword = 'hashedpassword123';
-      const createdUser = new User({
+      bcrypt.hash.mockResolvedValue(hashedPassword);
+
+      const mockCreatedUser = new User({
         id: '1',
-        ...command,
-        password: hashedPassword
+        username: 'newuser',
+        email: 'new@example.com',
+        password: hashedPassword,
+        name: 'New',
+        lastName: 'User'
       });
 
-      mockUserRepository.getByUsername.mockResolvedValue(null);
-      mockAuthService.hashPassword.mockResolvedValue(hashedPassword);
-      mockUserRepository.create.mockResolvedValue(createdUser);
+      mockUserRepository.create.mockResolvedValue(mockCreatedUser);
 
       const result = await handler.handle(command);
 
-      expect(mockUserRepository.getByUsername).toHaveBeenCalledWith('testuser');
-      expect(mockAuthService.hashPassword).toHaveBeenCalledWith('password123');
-      expect(mockUserRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          username: 'testuser',
-          email: 'test@example.com',
-          password: hashedPassword,
-          name: 'Test',
-          lastName: 'User'
-        })
-      );
-      expect(result).toBeInstanceOf(User);
-      expect(result.username).toBe('testuser');
-    });
-
-    it('should throw error if user already exists', async () => {
-      const command = {
-        username: 'existinguser',
-        email: 'existing@example.com',
-        password: 'password123'
-      };
-
-      const existingUser = new User({
-        id: '1',
-        username: 'existinguser',
-        email: 'existing@example.com'
+      expect(bcrypt.hash).toHaveBeenCalledWith('password123', 10);
+      expect(mockUserRepository.create).toHaveBeenCalledWith({
+        ...command,
+        password: hashedPassword
       });
-
-      mockUserRepository.getByUsername.mockResolvedValue(existingUser);
-
-      await expect(handler.handle(command)).rejects.toThrow('A user with this username already exists');
-      expect(mockUserRepository.getByUsername).toHaveBeenCalledWith('existinguser');
-      expect(mockAuthService.hashPassword).not.toHaveBeenCalled();
-      expect(mockUserRepository.create).not.toHaveBeenCalled();
+      expect(result).toEqual(expect.objectContaining({
+        id: '1',
+        username: 'newuser',
+        email: 'new@example.com',
+        name: 'New',
+        lastName: 'User'
+      }));
     });
 
-    it('should handle repository errors', async () => {
+    it('should throw error when password is missing', async () => {
       const command = {
-        username: 'testuser',
-        email: 'test@example.com',
+        username: 'newuser',
+        email: 'new@example.com'
+        // Missing password
+      };
+
+      await expect(handler.handle(command)).rejects.toThrow('La contraseña es obligatoria');
+    });
+
+    it('should throw error when password is empty', async () => {
+      const command = {
+        username: 'newuser',
+        email: 'new@example.com',
+        password: ''
+      };
+
+      await expect(handler.handle(command)).rejects.toThrow('La contraseña es obligatoria');
+    });
+
+    it('should throw error when password is null', async () => {
+      const command = {
+        username: 'newuser',
+        email: 'new@example.com',
+        password: null
+      };
+
+      await expect(handler.handle(command)).rejects.toThrow('La contraseña es obligatoria');
+    });
+
+    it('should handle password hashing errors', async () => {
+      const command = {
+        username: 'newuser',
+        email: 'new@example.com',
         password: 'password123'
       };
 
-      mockUserRepository.getByUsername.mockRejectedValue(new Error('Database error'));
-
-      await expect(handler.handle(command)).rejects.toThrow('Database error');
-    });
-
-    it('should handle auth service errors', async () => {
-      const command = {
-        username: 'testuser',
-        email: 'test@example.com',
-        password: 'password123'
-      };
-
-      mockUserRepository.getByUsername.mockResolvedValue(null);
-      mockAuthService.hashPassword.mockRejectedValue(new Error('Hashing error'));
+      bcrypt.hash.mockRejectedValue(new Error('Hashing error'));
 
       await expect(handler.handle(command)).rejects.toThrow('Hashing error');
     });
 
-    it('should handle create user errors', async () => {
+    it('should handle repository errors', async () => {
       const command = {
-        username: 'testuser',
-        email: 'test@example.com',
+        username: 'newuser',
+        email: 'new@example.com',
         password: 'password123'
       };
 
       const hashedPassword = 'hashedpassword123';
+      bcrypt.hash.mockResolvedValue(hashedPassword);
 
-      mockUserRepository.getByUsername.mockResolvedValue(null);
-      mockAuthService.hashPassword.mockResolvedValue(hashedPassword);
-      mockUserRepository.create.mockRejectedValue(new Error('Create error'));
+      mockUserRepository.create.mockRejectedValue(new Error('User already exists'));
 
-      await expect(handler.handle(command)).rejects.toThrow('Create error');
+      await expect(handler.handle(command)).rejects.toThrow('User already exists');
+    });
+
+    it('should create user with minimal data', async () => {
+      const command = {
+        username: 'minimaluser',
+        email: 'minimal@example.com',
+        password: 'password123'
+      };
+
+      const hashedPassword = 'hashedpassword123';
+      bcrypt.hash.mockResolvedValue(hashedPassword);
+
+      const mockCreatedUser = new User({
+        id: '2',
+        username: 'minimaluser',
+        email: 'minimal@example.com',
+        password: hashedPassword
+      });
+
+      mockUserRepository.create.mockResolvedValue(mockCreatedUser);
+
+      const result = await handler.handle(command);
+
+      expect(result).toEqual(expect.objectContaining({
+        id: '2',
+        username: 'minimaluser',
+        email: 'minimal@example.com'
+      }));
+    });
+
+    it('should create user with all optional fields', async () => {
+      const command = {
+        username: 'fulluser',
+        email: 'full@example.com',
+        password: 'password123',
+        name: 'Full',
+        lastName: 'User',
+        role: 'admin',
+        permissions: ['manage_users', 'view_reports']
+      };
+
+      const hashedPassword = 'hashedpassword123';
+      bcrypt.hash.mockResolvedValue(hashedPassword);
+
+      const mockCreatedUser = new User({
+        id: '3',
+        ...command,
+        password: hashedPassword
+      });
+
+      mockUserRepository.create.mockResolvedValue(mockCreatedUser);
+
+      const result = await handler.handle(command);
+
+      expect(result).toEqual(expect.objectContaining({
+        id: '3',
+        username: 'fulluser',
+        email: 'full@example.com',
+        name: 'Full',
+        lastName: 'User',
+        role: 'admin',
+        permissions: ['manage_users', 'view_reports']
+      }));
     });
   });
 });

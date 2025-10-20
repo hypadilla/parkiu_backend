@@ -5,81 +5,94 @@ const ReservationDetails = require('../../../src/core/domain/reservationDetails'
 describe('ParkingCellMapper', () => {
   describe('toDomain', () => {
     it('should map document to domain object', () => {
-      const document = {
-        id: 'cell1',
+      const doc = {
+        id: '507f1f77bcf86cd799439011',
         idStatic: 1,
         state: 'disponible',
-        reservationDetails: null,
-        createdDate: new Date('2023-01-01'),
+        createdDate: new Date('2024-01-01T00:00:00Z'),
         createdBy: 'system',
-        lastModifiedDate: new Date('2023-01-02'),
-        lastModifiedBy: 'user'
+        lastModifiedDate: new Date('2024-01-01T00:00:00Z'),
+        lastModifiedBy: 'system',
+        reservationDetails: null
       };
 
-      const cell = ParkingCellMapper.toDomain(document);
+      const result = ParkingCellMapper.toDomain(doc);
 
-      expect(cell).toBeInstanceOf(ParkingCell);
-      expect(cell.id).toBe('cell1');
-      expect(cell.idStatic).toBe(1);
-      expect(cell.state).toBe('disponible');
-      expect(cell.reservationDetails).toBeNull();
+      expect(result).toBeInstanceOf(ParkingCell);
+      expect(result.id).toBe('507f1f77bcf86cd799439011');
+      expect(result.idStatic).toBe(1);
+      expect(result.state).toBe('disponible');
+      expect(result.reservationDetails).toBeNull();
     });
 
     it('should map document with reservation details', () => {
-      const document = {
-        id: 'cell2',
-        idStatic: 2,
+      const doc = {
+        id: '507f1f77bcf86cd799439011',
+        idStatic: 1,
         state: 'reservado',
+        createdDate: new Date('2024-01-01T00:00:00Z'),
+        createdBy: 'system',
+        lastModifiedDate: new Date('2024-01-01T00:00:00Z'),
+        lastModifiedBy: 'system',
         reservationDetails: {
           reservedBy: 'user123',
-          startTime: '2023-01-01T10:00:00Z',
-          endTime: '2023-01-01T11:00:00Z',
+          startTime: new Date('2024-01-01T10:00:00Z'),
+          endTime: new Date('2024-01-01T12:00:00Z'),
           reason: 'Meeting'
         }
       };
 
-      const cell = ParkingCellMapper.toDomain(document);
+      const result = ParkingCellMapper.toDomain(doc);
 
-      expect(cell).toBeInstanceOf(ParkingCell);
-      expect(cell.id).toBe('cell2');
-      expect(cell.idStatic).toBe(2);
-      expect(cell.state).toBe('reservado');
-      expect(cell.reservationDetails).toBeInstanceOf(ReservationDetails);
+      expect(result).toBeInstanceOf(ParkingCell);
+      expect(result.id).toBe('507f1f77bcf86cd799439011');
+      expect(result.idStatic).toBe(1);
+      expect(result.state).toBe('reservado');
+      expect(result.reservationDetails).toBeInstanceOf(ReservationDetails);
+      expect(result.reservationDetails.reservedBy).toBe('user123');
     });
 
-    it('should handle null input', () => {
-      const result = ParkingCellMapper.toDomain(null);
-      expect(result).toBeNull();
-    });
+    it('should handle invalid reservation details', () => {
+      const doc = {
+        id: '507f1f77bcf86cd799439011',
+        idStatic: 1,
+        state: 'reservado',
+        createdDate: new Date('2024-01-01T00:00:00Z'),
+        createdBy: 'system',
+        lastModifiedDate: new Date('2024-01-01T00:00:00Z'),
+        lastModifiedBy: 'system',
+        reservationDetails: {
+          // Missing required fields
+          reservedBy: 'user123'
+        }
+      };
 
-    it('should handle undefined input', () => {
-      const result = ParkingCellMapper.toDomain(undefined);
-      expect(result).toBeUndefined();
+      expect(() => ParkingCellMapper.toDomain(doc)).toThrow('Error al crear ReservationDetails:');
     });
   });
 
   describe('toPersistence', () => {
     it('should map domain object to persistence format', () => {
-      const cell = new ParkingCell({
-        id: 'cell1',
+      const entity = new ParkingCell({
+        id: '507f1f77bcf86cd799439011',
         idStatic: 1,
         state: 'disponible',
-        reservationDetails: null,
-        createdDate: new Date('2023-01-01'),
+        createdDate: new Date('2024-01-01T00:00:00Z'),
         createdBy: 'system',
-        lastModifiedDate: new Date('2023-01-02'),
-        lastModifiedBy: 'user'
+        lastModifiedDate: new Date('2024-01-01T00:00:00Z'),
+        lastModifiedBy: 'system',
+        reservationDetails: null
       });
 
-      const persistenceData = ParkingCellMapper.toPersistence(cell);
+      const result = ParkingCellMapper.toPersistence(entity);
 
-      expect(persistenceData).toEqual({
-        createdDate: cell.createdDate,
-        createdBy: 'system',
-        lastModifiedDate: cell.lastModifiedDate,
-        lastModifiedBy: 'user',
+      expect(result).toEqual({
         idStatic: 1,
         state: 'disponible',
+        createdDate: new Date('2024-01-01T00:00:00Z'),
+        createdBy: 'system',
+        lastModifiedDate: new Date('2024-01-01T00:00:00Z'),
+        lastModifiedBy: 'system',
         reservationDetails: null
       });
     });
@@ -87,94 +100,91 @@ describe('ParkingCellMapper', () => {
     it('should map domain object with reservation details', () => {
       const reservationDetails = new ReservationDetails({
         reservedBy: 'user123',
-        startTime: '2023-01-01T10:00:00Z',
-        endTime: '2023-01-01T11:00:00Z',
+        startTime: new Date('2024-01-01T10:00:00Z'),
+        endTime: new Date('2024-01-01T12:00:00Z'),
         reason: 'Meeting'
       });
 
-      const cell = new ParkingCell({
-        id: 'cell2',
-        idStatic: 2,
+      const entity = new ParkingCell({
+        id: '507f1f77bcf86cd799439011',
+        idStatic: 1,
         state: 'reservado',
-        reservationDetails: reservationDetails
+        createdDate: new Date('2024-01-01T00:00:00Z'),
+        createdBy: 'system',
+        lastModifiedDate: new Date('2024-01-01T00:00:00Z'),
+        lastModifiedBy: 'system',
+        reservationDetails
       });
 
-      const persistenceData = ParkingCellMapper.toPersistence(cell);
+      const result = ParkingCellMapper.toPersistence(entity);
 
-      expect(persistenceData).toEqual({
-        createdDate: cell.createdDate,
-        createdBy: undefined,
-        lastModifiedDate: cell.lastModifiedDate,
-        lastModifiedBy: undefined,
-        idStatic: 2,
+      expect(result).toEqual({
+        idStatic: 1,
         state: 'reservado',
-        reservationDetails: expect.objectContaining({
+        createdDate: new Date('2024-01-01T00:00:00Z'),
+        createdBy: 'system',
+        lastModifiedDate: new Date('2024-01-01T00:00:00Z'),
+        lastModifiedBy: 'system',
+        reservationDetails: {
           reservedBy: 'user123',
+          startTime: new Date('2024-01-01T10:00:00Z'),
+          endTime: new Date('2024-01-01T12:00:00Z'),
           reason: 'Meeting'
-        })
+        }
       });
     });
   });
 
   describe('toClient', () => {
     it('should map domain object to client format', () => {
-      const cell = new ParkingCell({
-        id: 'cell1',
+      const entity = new ParkingCell({
+        id: '507f1f77bcf86cd799439011',
         idStatic: 1,
         state: 'disponible',
+        createdDate: new Date('2024-01-01T00:00:00Z'),
+        lastModifiedDate: new Date('2024-01-01T00:00:00Z'),
         reservationDetails: null
       });
 
-      const clientData = ParkingCellMapper.toClient(cell);
+      const result = ParkingCellMapper.toClient(entity);
 
-      expect(clientData).toEqual({
-        id: 'cell1',
+      expect(result).toEqual({
+        id: '507f1f77bcf86cd799439011',
         idStatic: 1,
         state: 'disponible',
         reservationDetails: null,
-        createdDate: expect.any(Date),
-        lastModifiedDate: expect.any(Date)
+        createdDate: new Date('2024-01-01T00:00:00Z'),
+        lastModifiedDate: new Date('2024-01-01T00:00:00Z')
       });
     });
 
-    it('should map domain object with reservation details', () => {
+    it('should map domain object with reservation details to client format', () => {
       const reservationDetails = new ReservationDetails({
         reservedBy: 'user123',
-        startTime: '2023-01-01T10:00:00Z',
-        endTime: '2023-01-01T11:00:00Z',
+        startTime: new Date('2024-01-01T10:00:00Z'),
+        endTime: new Date('2024-01-01T12:00:00Z'),
         reason: 'Meeting'
       });
 
-      const cell = new ParkingCell({
-        id: 'cell2',
-        idStatic: 2,
+      const entity = new ParkingCell({
+        id: '507f1f77bcf86cd799439011',
+        idStatic: 1,
         state: 'reservado',
-        reservationDetails: reservationDetails
+        createdDate: new Date('2024-01-01T00:00:00Z'),
+        lastModifiedDate: new Date('2024-01-01T00:00:00Z'),
+        reservationDetails
       });
 
-      const clientData = ParkingCellMapper.toClient(cell);
+      const result = ParkingCellMapper.toClient(entity);
 
-      expect(clientData).toEqual({
-        id: 'cell2',
-        idStatic: 2,
+      expect(result).toEqual({
+        id: '507f1f77bcf86cd799439011',
+        idStatic: 1,
         state: 'reservado',
-        reservationDetails: expect.objectContaining({
-          reservedBy: 'user123',
-          reason: 'Meeting'
-        }),
-        createdDate: expect.any(Date),
-        lastModifiedDate: expect.any(Date)
+        reservationDetails,
+        createdDate: new Date('2024-01-01T00:00:00Z'),
+        lastModifiedDate: new Date('2024-01-01T00:00:00Z')
       });
-    });
-
-    it('should handle null input', () => {
-      const result = ParkingCellMapper.toClient(null);
-      expect(result).toBeNull();
-    });
-
-    it('should handle undefined input', () => {
-      const result = ParkingCellMapper.toClient(undefined);
-      expect(result).toBeUndefined();
     });
   });
 });

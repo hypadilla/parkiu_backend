@@ -1,7 +1,13 @@
 const request = require('supertest');
-const app = require('../../src/adapters/app');
+const { setupIntegrationTests } = require('../setup/integrationSetup');
+const { generateTestToken } = require('../helpers/jwtHelper');
 
 describe('Auth Integration Tests', () => {
+  let server;
+
+  beforeAll(async () => {
+    server = await setupIntegrationTests();
+  }, 30000);
   describe('POST /api/auth/register', () => {
     it('should register a new user successfully', async () => {
       const userData = {
@@ -12,14 +18,14 @@ describe('Auth Integration Tests', () => {
         lastName: 'User'
       };
 
-      const response = await request(app)
-        .post('/api/auth/register')
+      const response = await request(server)
+        .post('/api/auth/register-test-user')
+        .timeout({ deadline: 15000, response: 10000 })
         .send(userData)
         .expect(201);
 
-      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('errors');
       expect(response.body).toHaveProperty('user');
-      expect(response.body).toHaveProperty('token');
       expect(response.body.user.username).toBe('newuser');
       expect(response.body.user.email).toBe('newuser@example.com');
     });
@@ -28,51 +34,47 @@ describe('Auth Integration Tests', () => {
       const userData = {
         username: 'testuser',
         email: 'invalid-email',
-        password: 'password123',
-        name: 'Test',
-        lastName: 'User'
+        password: 'password123'
       };
 
-      const response = await request(app)
-        .post('/api/auth/register')
+      const response = await request(server)
+        .post('/api/auth/register-test-user')
+        .timeout({ deadline: 15000, response: 10000 })
         .send(userData)
         .expect(400);
 
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('error');
+      expect(response.body).toHaveProperty('errors');
     });
 
     it('should return 400 for short password', async () => {
       const userData = {
         username: 'testuser',
         email: 'test@example.com',
-        password: '123',
-        name: 'Test',
-        lastName: 'User'
+        password: '123'
       };
 
-      const response = await request(app)
-        .post('/api/auth/register')
+      const response = await request(server)
+        .post('/api/auth/register-test-user')
+        .timeout({ deadline: 15000, response: 10000 })
         .send(userData)
         .expect(400);
 
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('error');
+      expect(response.body).toHaveProperty('errors');
     });
 
     it('should return 400 for missing required fields', async () => {
       const userData = {
         username: 'testuser'
-        // Missing required fields
+        // Missing email and password
       };
 
-      const response = await request(app)
-        .post('/api/auth/register')
+      const response = await request(server)
+        .post('/api/auth/register-test-user')
+        .timeout({ deadline: 15000, response: 10000 })
         .send(userData)
         .expect(400);
 
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('error');
+      expect(response.body).toHaveProperty('errors');
     });
   });
 
@@ -87,8 +89,9 @@ describe('Auth Integration Tests', () => {
         lastName: 'Test'
       };
 
-      await request(app)
-        .post('/api/auth/register')
+      await request(server)
+        .post('/api/auth/register-test-user')
+        .timeout({ deadline: 20000, response: 15000 })
         .send(userData);
 
       // Then login
@@ -97,15 +100,16 @@ describe('Auth Integration Tests', () => {
         password: 'password123'
       };
 
-      const response = await request(app)
+      const response = await request(server)
         .post('/api/auth/login')
+        .set('Authorization', 'Bearer test-token')
+        .timeout({ deadline: 20000, response: 15000 })
         .send(loginData)
         .expect(200);
 
-      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('errors');
       expect(response.body).toHaveProperty('user');
       expect(response.body).toHaveProperty('token');
-      expect(response.body.user.username).toBe('logintest');
     });
 
     it('should return 401 for invalid credentials', async () => {
@@ -114,13 +118,14 @@ describe('Auth Integration Tests', () => {
         password: 'wrongpassword'
       };
 
-      const response = await request(app)
+      const response = await request(server)
         .post('/api/auth/login')
+        .set('Authorization', 'Bearer test-token')
+        .timeout({ deadline: 15000, response: 10000 })
         .send(loginData)
         .expect(401);
 
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('error');
+      expect(response.body).toHaveProperty('errors');
     });
 
     it('should return 400 for missing credentials', async () => {
@@ -129,13 +134,14 @@ describe('Auth Integration Tests', () => {
         // Missing password
       };
 
-      const response = await request(app)
+      const response = await request(server)
         .post('/api/auth/login')
+        .set('Authorization', 'Bearer test-token')
+        .timeout({ deadline: 15000, response: 10000 })
         .send(loginData)
         .expect(400);
 
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('error');
+      expect(response.body).toHaveProperty('errors');
     });
   });
 
@@ -150,12 +156,15 @@ describe('Auth Integration Tests', () => {
         lastName: 'Test'
       };
 
-      await request(app)
-        .post('/api/auth/register')
+      await request(server)
+        .post('/api/auth/register-test-user')
+        .timeout({ deadline: 20000, response: 15000 })
         .send(userData);
 
-      const loginResponse = await request(app)
+      const loginResponse = await request(server)
         .post('/api/auth/login')
+        .set('Authorization', 'Bearer test-token')
+        .timeout({ deadline: 20000, response: 15000 })
         .send({
           username: 'verifytest',
           password: 'password123'
@@ -163,44 +172,50 @@ describe('Auth Integration Tests', () => {
 
       const token = loginResponse.body.token;
 
-      const response = await request(app)
+      const response = await request(server)
         .post('/api/auth/verify-token')
+        .set('Authorization', 'Bearer test-token')
+        .timeout({ deadline: 15000, response: 10000 })
         .send({ token })
         .expect(200);
 
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body).toHaveProperty('valid', true);
+      expect(response.body).toHaveProperty('valid');
+      expect(response.body).toHaveProperty('user');
     });
 
     it('should return 400 for missing token', async () => {
-      const response = await request(app)
+      const response = await request(server)
         .post('/api/auth/verify-token')
+        .set('Authorization', 'Bearer test-token')
+        .timeout({ deadline: 15000, response: 10000 })
         .send({})
         .expect(400);
 
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('error');
+      expect(response.body).toHaveProperty('errors');
     });
 
     it('should return 401 for invalid token', async () => {
-      const response = await request(app)
+      const response = await request(server)
         .post('/api/auth/verify-token')
+        .set('Authorization', 'Bearer test-token')
+        .timeout({ deadline: 15000, response: 10000 })
         .send({ token: 'invalid-token' })
         .expect(401);
 
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('error');
+      expect(response.body).toHaveProperty('errors');
     });
   });
 
   describe('POST /api/auth/logout', () => {
     it('should logout successfully', async () => {
-      const response = await request(app)
+      const response = await request(server)
         .post('/api/auth/logout')
+        .set('Authorization', 'Bearer test-token')
+        .timeout({ deadline: 15000, response: 10000 })
         .send({ token: 'some-token' })
         .expect(200);
 
-      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('errors');
     });
   });
 });

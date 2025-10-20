@@ -2,19 +2,15 @@ const AuthenticateUserHandler = require('../../../src/core/services/features/aut
 const User = require('../../../src/core/domain/user');
 
 describe('AuthenticateUserHandler', () => {
-  let mockUserRepository;
-  let mockAuthService;
   let handler;
+  let mockAuthService;
 
   beforeEach(() => {
-    mockUserRepository = {
-      getByUsername: jest.fn()
-    };
     mockAuthService = {
-      comparePassword: jest.fn(),
-      generateToken: jest.fn()
+      authenticate: jest.fn()
     };
-    handler = new AuthenticateUserHandler(mockUserRepository, mockAuthService);
+    handler = new AuthenticateUserHandler(mockAuthService);
+    jest.clearAllMocks();
   });
 
   describe('handle', () => {
@@ -24,79 +20,66 @@ describe('AuthenticateUserHandler', () => {
         password: 'password123'
       };
 
-      const user = new User({
+      const mockUser = new User({
         id: '1',
         username: 'testuser',
-        email: 'test@example.com',
-        password: 'hashedpassword123'
+        email: 'test@example.com'
       });
 
-      const token = 'jwt-token-123';
+      const mockToken = 'jwt-token';
 
-      mockUserRepository.getByUsername.mockResolvedValue(user);
-      mockAuthService.comparePassword.mockResolvedValue(true);
-      mockAuthService.generateToken.mockResolvedValue(token);
+      mockAuthService.authenticate.mockResolvedValue({
+        user: mockUser,
+        token: mockToken
+      });
 
       const result = await handler.handle(command);
 
-      expect(mockUserRepository.getByUsername).toHaveBeenCalledWith('testuser');
-      expect(mockAuthService.comparePassword).toHaveBeenCalledWith('password123', 'hashedpassword123');
-      expect(mockAuthService.generateToken).toHaveBeenCalledWith({ userId: '1', username: 'testuser' });
+      expect(mockAuthService.authenticate).toHaveBeenCalledWith({
+        username: 'testuser',
+        password: 'password123'
+      });
       expect(result).toEqual({
-        user: expect.objectContaining({
+        userClient: expect.objectContaining({
           id: '1',
           username: 'testuser',
           email: 'test@example.com'
         }),
-        token: 'jwt-token-123'
+        token: 'jwt-token'
       });
     });
 
-    it('should throw error if user not found', async () => {
-      const command = {
-        username: 'nonexistent',
-        password: 'password123'
-      };
-
-      mockUserRepository.getByUsername.mockResolvedValue(null);
-
-      await expect(handler.handle(command)).rejects.toThrow('Usuario no encontrado');
-      expect(mockUserRepository.getByUsername).toHaveBeenCalledWith('nonexistent');
-      expect(mockAuthService.comparePassword).not.toHaveBeenCalled();
-      expect(mockAuthService.generateToken).not.toHaveBeenCalled();
-    });
-
-    it('should throw error if password is incorrect', async () => {
+    it('should handle authentication errors', async () => {
       const command = {
         username: 'testuser',
         password: 'wrongpassword'
       };
 
-      const user = new User({
-        id: '1',
-        username: 'testuser',
-        email: 'test@example.com',
-        password: 'hashedpassword123'
-      });
+      mockAuthService.authenticate.mockRejectedValue(new Error('Invalid credentials'));
 
-      mockUserRepository.getByUsername.mockResolvedValue(user);
-      mockAuthService.comparePassword.mockResolvedValue(false);
-
-      await expect(handler.handle(command)).rejects.toThrow('Credenciales inválidas');
-      expect(mockUserRepository.getByUsername).toHaveBeenCalledWith('testuser');
-      expect(mockAuthService.comparePassword).toHaveBeenCalledWith('wrongpassword', 'hashedpassword123');
-      expect(mockAuthService.generateToken).not.toHaveBeenCalled();
+      await expect(handler.handle(command)).rejects.toThrow('Invalid credentials');
     });
 
-    it('should handle repository errors', async () => {
+    it('should handle missing username', async () => {
       const command = {
-        username: 'testuser',
+        username: '',
         password: 'password123'
       };
 
-      mockUserRepository.getByUsername.mockRejectedValue(new Error('Database error'));
+      mockAuthService.authenticate.mockRejectedValue(new Error('Username is required'));
 
-      await expect(handler.handle(command)).rejects.toThrow('Database error');
+      await expect(handler.handle(command)).rejects.toThrow('Username is required');
+    });
+
+    it('should handle missing password', async () => {
+      const command = {
+        username: 'testuser',
+        password: ''
+      };
+
+      mockAuthService.authenticate.mockRejectedValue(new Error('Password is required'));
+
+      await expect(handler.handle(command)).rejects.toThrow('Password is required');
     });
 
     it('should handle auth service errors', async () => {
@@ -105,35 +88,9 @@ describe('AuthenticateUserHandler', () => {
         password: 'password123'
       };
 
-      const user = new User({
-        id: '1',
-        username: 'testuser',
-        password: 'hashedpassword123'
-      });
+      mockAuthService.authenticate.mockRejectedValue(new Error('Database connection failed'));
 
-      mockUserRepository.getByUsername.mockResolvedValue(user);
-      mockAuthService.comparePassword.mockRejectedValue(new Error('Compare error'));
-
-      await expect(handler.handle(command)).rejects.toThrow('Compare error');
-    });
-
-    it('should handle token generation errors', async () => {
-      const command = {
-        username: 'testuser',
-        password: 'password123'
-      };
-
-      const user = new User({
-        id: '1',
-        username: 'testuser',
-        password: 'hashedpassword123'
-      });
-
-      mockUserRepository.getByUsername.mockResolvedValue(user);
-      mockAuthService.comparePassword.mockResolvedValue(true);
-      mockAuthService.generateToken.mockRejectedValue(new Error('Token error'));
-
-      await expect(handler.handle(command)).rejects.toThrow('Token error');
+      await expect(handler.handle(command)).rejects.toThrow('Database connection failed');
     });
   });
 });

@@ -2,59 +2,114 @@ const BulkStatusUpdateCommand = require('../../../src/core/services/features/par
 
 describe('BulkStatusUpdateCommand', () => {
   describe('Constructor', () => {
-    it('should create command with updates array', () => {
-      const commandData = {
-        updates: [
-          { id: 'cell1', state: 'ocupado' },
-          { id: 'cell2', state: 'disponible' }
+    it('should create command with data', () => {
+      const data = {
+        sectores: [
+          {
+            celdas: {
+              '1': 'ocupado',
+              '2': 'disponible'
+            }
+          }
         ]
       };
 
-      const command = new BulkStatusUpdateCommand(commandData);
+      const command = new BulkStatusUpdateCommand(data);
 
-      expect(command.updates).toEqual(commandData.updates);
-      expect(command.updates).toHaveLength(2);
+      expect(command.data).toEqual(data);
     });
 
-    it('should create command with empty updates array', () => {
-      const commandData = {
-        updates: []
+    it('should handle empty data', () => {
+      const command = new BulkStatusUpdateCommand({});
+
+      expect(command.data).toEqual({});
+    });
+
+    it('should handle null data', () => {
+      const command = new BulkStatusUpdateCommand(null);
+
+      expect(command.data).toBeNull();
+    });
+
+    it('should handle undefined data', () => {
+      const command = new BulkStatusUpdateCommand(undefined);
+
+      expect(command.data).toBeUndefined();
+    });
+
+    it('should handle complex data structure', () => {
+      const complexData = {
+        sectores: [
+          {
+            nombre: 'Sector A',
+            celdas: {
+              '1': 'ocupado',
+              '2': 'disponible',
+              '3': 'reservado'
+            }
+          },
+          {
+            nombre: 'Sector B',
+            celdas: {
+              '4': 'inhabilitado',
+              '5': 'disponible'
+            }
+          }
+        ],
+        metadata: {
+          timestamp: new Date(),
+          user: 'admin'
+        }
       };
 
-      const command = new BulkStatusUpdateCommand(commandData);
+      const command = new BulkStatusUpdateCommand(complexData);
 
-      expect(command.updates).toEqual([]);
-      expect(command.updates).toHaveLength(0);
+      expect(command.data).toEqual(complexData);
     });
 
-    it('should handle empty command data', () => {
-      const commandData = {};
+    it('should handle empty sectores', () => {
+      const data = {
+        sectores: []
+      };
 
-      const command = new BulkStatusUpdateCommand(commandData);
+      const command = new BulkStatusUpdateCommand(data);
 
-      expect(command.updates).toBeUndefined();
+      expect(command.data).toEqual(data);
     });
 
-    it('should handle null command data', () => {
-      const commandData = null;
+    it('should handle sectores with empty celdas', () => {
+      const data = {
+        sectores: [
+          {
+            celdas: {}
+          }
+        ]
+      };
 
-      const command = new BulkStatusUpdateCommand(commandData);
+      const command = new BulkStatusUpdateCommand(data);
 
-      expect(command.updates).toBeUndefined();
+      expect(command.data).toEqual(data);
     });
 
-    it('should handle large updates array', () => {
-      const updates = Array(100).fill().map((_, i) => ({
-        id: `cell${i}`,
-        state: i % 2 === 0 ? 'disponible' : 'ocupado'
-      }));
+    it('should handle string data', () => {
+      const stringData = '{"sectores": []}';
+      const command = new BulkStatusUpdateCommand(stringData);
 
-      const commandData = { updates };
+      expect(command.data).toBe(stringData);
+    });
 
-      const command = new BulkStatusUpdateCommand(commandData);
+    it('should handle numeric data', () => {
+      const numericData = 123;
+      const command = new BulkStatusUpdateCommand(numericData);
 
-      expect(command.updates).toEqual(updates);
-      expect(command.updates).toHaveLength(100);
+      expect(command.data).toBe(123);
+    });
+
+    it('should handle boolean data', () => {
+      const booleanData = true;
+      const command = new BulkStatusUpdateCommand(booleanData);
+
+      expect(command.data).toBe(true);
     });
   });
 });

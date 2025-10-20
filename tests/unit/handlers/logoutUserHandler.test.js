@@ -1,22 +1,96 @@
 const LogoutUserHandler = require('../../../src/core/services/features/auth/command/logoutUser/logoutUserHandler');
 
 describe('LogoutUserHandler', () => {
-  let mockTokenBlacklist;
   let handler;
+  let mockTokenBlacklist;
 
   beforeEach(() => {
-    mockTokenBlacklist = new Set();
+    mockTokenBlacklist = {
+      add: jest.fn()
+    };
     handler = new LogoutUserHandler(mockTokenBlacklist);
+    jest.clearAllMocks();
   });
 
   describe('handle', () => {
-    it('should add token to blacklist successfully', async () => {
-      const command = { token: 'some-token' };
+    it('should logout user successfully', async () => {
+      const command = {
+        token: 'valid-token'
+      };
 
       const result = await handler.handle(command);
 
-      expect(mockTokenBlacklist.has('some-token')).toBe(true);
-      expect(result).toEqual({ success: true });
+      expect(mockTokenBlacklist.add).toHaveBeenCalledWith('valid-token');
+      expect(result).toEqual({
+        message: 'Logged out successfully'
+      });
+    });
+
+    it('should handle empty token', async () => {
+      const command = {
+        token: ''
+      };
+
+      const result = await handler.handle(command);
+
+      expect(mockTokenBlacklist.add).toHaveBeenCalledWith('');
+      expect(result).toEqual({
+        message: 'Logged out successfully'
+      });
+    });
+
+    it('should handle null token', async () => {
+      const command = {
+        token: null
+      };
+
+      const result = await handler.handle(command);
+
+      expect(mockTokenBlacklist.add).toHaveBeenCalledWith(null);
+      expect(result).toEqual({
+        message: 'Logged out successfully'
+      });
+    });
+
+    it('should handle undefined token', async () => {
+      const command = {
+        token: undefined
+      };
+
+      const result = await handler.handle(command);
+
+      expect(mockTokenBlacklist.add).toHaveBeenCalledWith(undefined);
+      expect(result).toEqual({
+        message: 'Logged out successfully'
+      });
+    });
+
+    it('should handle long token', async () => {
+      const longToken = 'a'.repeat(1000);
+      const command = {
+        token: longToken
+      };
+
+      const result = await handler.handle(command);
+
+      expect(mockTokenBlacklist.add).toHaveBeenCalledWith(longToken);
+      expect(result).toEqual({
+        message: 'Logged out successfully'
+      });
+    });
+
+    it('should handle special characters in token', async () => {
+      const specialToken = 'token-with-special-chars!@#$%^&*()';
+      const command = {
+        token: specialToken
+      };
+
+      const result = await handler.handle(command);
+
+      expect(mockTokenBlacklist.add).toHaveBeenCalledWith(specialToken);
+      expect(result).toEqual({
+        message: 'Logged out successfully'
+      });
     });
 
     it('should handle multiple tokens in blacklist', async () => {
@@ -26,27 +100,9 @@ describe('LogoutUserHandler', () => {
       await handler.handle(command1);
       await handler.handle(command2);
 
-      expect(mockTokenBlacklist.has('token1')).toBe(true);
-      expect(mockTokenBlacklist.has('token2')).toBe(true);
-      expect(mockTokenBlacklist.size).toBe(2);
-    });
-
-    it('should handle empty token', async () => {
-      const command = { token: '' };
-
-      const result = await handler.handle(command);
-
-      expect(mockTokenBlacklist.has('')).toBe(true);
-      expect(result).toEqual({ success: true });
-    });
-
-    it('should handle null token', async () => {
-      const command = { token: null };
-
-      const result = await handler.handle(command);
-
-      expect(mockTokenBlacklist.has(null)).toBe(true);
-      expect(result).toEqual({ success: true });
+      expect(mockTokenBlacklist.add).toHaveBeenCalledWith('token1');
+      expect(mockTokenBlacklist.add).toHaveBeenCalledWith('token2');
+      expect(mockTokenBlacklist.add).toHaveBeenCalledTimes(2);
     });
   });
 });

@@ -1,13 +1,13 @@
 const UpsertParkingCellHandler = require('../../../src/core/services/features/parkingCell/command/upsertParkingCell/upsertParkingCellHandler');
-const ParkingCell = require('../../../src/core/domain/parkingCell');
+const ReservationDetails = require('../../../src/core/domain/reservationDetails');
 
 describe('UpsertParkingCellHandler', () => {
-  let mockParkingCellRepository;
   let handler;
+  let mockParkingCellRepository;
 
   beforeEach(() => {
     mockParkingCellRepository = {
-      upsert: jest.fn()
+      upsertByStaticId: jest.fn()
     };
     handler = new UpsertParkingCellHandler(mockParkingCellRepository);
   });
@@ -15,74 +15,117 @@ describe('UpsertParkingCellHandler', () => {
   describe('handle', () => {
     it('should upsert parking cell successfully', async () => {
       const command = {
-        id: 'cell1',
-        idStatic: 1,
-        state: 'disponible',
-        reservationDetails: null
-      };
-
-      const mockCell = new ParkingCell(command);
-      mockParkingCellRepository.upsert.mockResolvedValue(mockCell);
-
-      const result = await handler.handle(command);
-
-      expect(mockParkingCellRepository.upsert).toHaveBeenCalledWith(command);
-      expect(result).toBeInstanceOf(ParkingCell);
-      expect(result.id).toBe('cell1');
-      expect(result.idStatic).toBe(1);
-      expect(result.state).toBe('disponible');
-    });
-
-    it('should upsert parking cell with reservation details', async () => {
-      const ReservationDetails = require('../../../src/core/domain/reservationDetails');
-      
-      const reservationDetails = new ReservationDetails({
-        reservedBy: 'user123',
-        startTime: '2023-01-01T10:00:00Z',
-        endTime: '2023-01-01T11:00:00Z',
-        reason: 'Meeting'
-      });
-
-      const command = {
-        id: 'cell2',
-        idStatic: 2,
-        state: 'reservado',
-        reservationDetails: reservationDetails
-      };
-
-      const mockCell = new ParkingCell(command);
-      mockParkingCellRepository.upsert.mockResolvedValue(mockCell);
-
-      const result = await handler.handle(command);
-
-      expect(mockParkingCellRepository.upsert).toHaveBeenCalledWith(command);
-      expect(result).toBeInstanceOf(ParkingCell);
-      expect(result.state).toBe('reservado');
-      expect(result.reservationDetails).toBeInstanceOf(ReservationDetails);
-    });
-
-    it('should handle repository errors', async () => {
-      const command = {
-        id: 'cell1',
         idStatic: 1,
         state: 'disponible'
       };
 
-      mockParkingCellRepository.upsert.mockRejectedValue(new Error('Upsert error'));
+      mockParkingCellRepository.upsertByStaticId.mockResolvedValue('507f1f77bcf86cd799439011');
+
+      const result = await handler.handle(command);
+
+      expect(mockParkingCellRepository.upsertByStaticId).toHaveBeenCalledWith(1, 'disponible', undefined);
+      expect(result).toBe('507f1f77bcf86cd799439011');
+    });
+
+    it('should upsert parking cell with reservation details', async () => {
+      const command = {
+        idStatic: 2,
+        state: 'reservado',
+        reservationDetails: {
+          reservedBy: 'user123',
+          startTime: new Date('2024-01-01T10:00:00Z'),
+          endTime: new Date('2024-01-01T12:00:00Z'),
+          reason: 'Meeting'
+        }
+      };
+
+      mockParkingCellRepository.upsertByStaticId.mockResolvedValue('507f1f77bcf86cd799439012');
+
+      const result = await handler.handle(command);
+
+      expect(mockParkingCellRepository.upsertByStaticId).toHaveBeenCalledWith(
+        2,
+        'reservado',
+        expect.objectContaining({
+          reservedBy: 'user123',
+          startTime: expect.any(Date),
+          endTime: expect.any(Date),
+          reason: 'Meeting'
+        })
+      );
+      expect(result).toBe('507f1f77bcf86cd799439012');
+    });
+
+    it('should handle repository errors', async () => {
+      const command = {
+        idStatic: 1,
+        state: 'disponible'
+      };
+
+      mockParkingCellRepository.upsertByStaticId.mockRejectedValue(new Error('Upsert error'));
 
       await expect(handler.handle(command)).rejects.toThrow('Upsert error');
     });
 
-    it('should handle invalid command data', async () => {
+    it('should throw error for invalid state', async () => {
       const command = {
-        id: 'cell1',
         idStatic: 1,
         state: 'invalid_state'
       };
 
-      mockParkingCellRepository.upsert.mockRejectedValue(new Error('Invalid state'));
+      await expect(handler.handle(command)).rejects.toThrow('El estado \'invalid_state\' no es válido. Debe ser uno de: disponible, ocupado, reservado, inhabilitado');
+    });
 
-      await expect(handler.handle(command)).rejects.toThrow('Invalid state');
+    it('should throw error when reservation details missing for reserved state', async () => {
+      const command = {
+        idStatic: 1,
+        state: 'reservado'
+        // Missing reservationDetails
+      };
+
+      await expect(handler.handle(command)).rejects.toThrow('reservationDetails es requerido cuando el estado es "reservado".');
+    });
+
+    it('should throw error when required reservation fields missing', async () => {
+      const command = {
+        idStatic: 1,
+        state: 'reservado',
+        reservationDetails: {
+          reservedBy: 'user123'
+          // Missing startTime and endTime
+        }
+      };
+
+      await expect(handler.handle(command)).rejects.toThrow('Los campos reservedBy, startTime y endTime son obligatorios en reservationDetails.');
+    });
+
+    it('should handle reservation details with valid reason', async () => {
+      const command = {
+        idStatic: 3,
+        state: 'reservado',
+        reservationDetails: {
+          reservedBy: 'user456',
+          startTime: new Date('2024-01-01T14:00:00Z'),
+          endTime: new Date('2024-01-01T16:00:00Z'),
+          reason: 'Meeting'
+        }
+      };
+
+      mockParkingCellRepository.upsertByStaticId.mockResolvedValue('507f1f77bcf86cd799439013');
+
+      const result = await handler.handle(command);
+
+      expect(mockParkingCellRepository.upsertByStaticId).toHaveBeenCalledWith(
+        3,
+        'reservado',
+        expect.objectContaining({
+          reservedBy: 'user456',
+          startTime: expect.any(Date),
+          endTime: expect.any(Date),
+          reason: 'Meeting'
+        })
+      );
+      expect(result).toBe('507f1f77bcf86cd799439013');
     });
   });
 });

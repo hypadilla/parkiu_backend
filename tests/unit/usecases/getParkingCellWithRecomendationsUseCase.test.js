@@ -1,10 +1,9 @@
 const GetParkingCellWithRecomendationsUseCase = require('../../../src/core/usecases/getParkingCellWithRecomendationsUseCase');
-const ParkingCell = require('../../../src/core/domain/parkingCell');
 
 describe('GetParkingCellWithRecomendationsUseCase', () => {
+  let useCase;
   let mockGetAllParkingCellHandler;
   let mockGetRecommendationsHandler;
-  let useCase;
 
   beforeEach(() => {
     mockGetAllParkingCellHandler = {
@@ -17,28 +16,19 @@ describe('GetParkingCellWithRecomendationsUseCase', () => {
       mockGetAllParkingCellHandler,
       mockGetRecommendationsHandler
     );
+    jest.clearAllMocks();
   });
 
   describe('execute', () => {
-    it('should return parking cells and recommendations', async () => {
+    it('should return parking cells and recommendations successfully', async () => {
       const mockParkingCells = [
-        new ParkingCell({
-          id: 'cell1',
-          idStatic: 1,
-          state: 'disponible',
-          reservationDetails: null
-        }),
-        new ParkingCell({
-          id: 'cell2',
-          idStatic: 2,
-          state: 'ocupado',
-          reservationDetails: null
-        })
+        { id: '1', idStatic: 1, state: 'disponible' },
+        { id: '2', idStatic: 2, state: 'ocupado' }
       ];
 
       const mockRecommendations = [
-        { id: '1', message: 'Recommendation 1', priority: 'high' },
-        { id: '2', message: 'Recommendation 2', priority: 'medium' }
+        { message: 'Recomendación 1', priority: 'high' },
+        { message: 'Recomendación 2', priority: 'medium' }
       ];
 
       mockGetAllParkingCellHandler.handle.mockResolvedValue(mockParkingCells);
@@ -49,19 +39,19 @@ describe('GetParkingCellWithRecomendationsUseCase', () => {
       expect(mockGetAllParkingCellHandler.handle).toHaveBeenCalled();
       expect(mockGetRecommendationsHandler.handle).toHaveBeenCalled();
       expect(result).toEqual({
-        parkingSpaces: mockParkingCells,
+        parkingCells: mockParkingCells,
         recommendations: mockRecommendations
       });
     });
 
-    it('should return empty arrays when no data available', async () => {
+    it('should return empty arrays when no data', async () => {
       mockGetAllParkingCellHandler.handle.mockResolvedValue([]);
       mockGetRecommendationsHandler.handle.mockResolvedValue([]);
 
       const result = await useCase.execute();
 
       expect(result).toEqual({
-        parkingSpaces: [],
+        parkingCells: [],
         recommendations: []
       });
     });
@@ -74,60 +64,71 @@ describe('GetParkingCellWithRecomendationsUseCase', () => {
     });
 
     it('should handle recommendations handler errors', async () => {
-      const mockParkingCells = [
-        new ParkingCell({
-          id: 'cell1',
-          idStatic: 1,
-          state: 'disponible'
-        })
-      ];
-
+      const mockParkingCells = [{ id: '1', idStatic: 1, state: 'disponible' }];
       mockGetAllParkingCellHandler.handle.mockResolvedValue(mockParkingCells);
       mockGetRecommendationsHandler.handle.mockRejectedValue(new Error('Recommendations error'));
 
       await expect(useCase.execute()).rejects.toThrow('Recommendations error');
     });
 
-    it('should handle both handlers with complex data', async () => {
-      const ReservationDetails = require('../../../src/core/domain/reservationDetails');
-      
-      const reservationDetails = new ReservationDetails({
-        reservedBy: 'user123',
-        startTime: '2023-01-01T10:00:00Z',
-        endTime: '2023-01-01T11:00:00Z',
-        reason: 'Meeting'
-      });
+    it('should handle both handlers errors', async () => {
+      mockGetAllParkingCellHandler.handle.mockRejectedValue(new Error('Parking cell error'));
+      mockGetRecommendationsHandler.handle.mockRejectedValue(new Error('Recommendations error'));
 
+      await expect(useCase.execute()).rejects.toThrow('Parking cell error');
+    });
+
+    it('should return data with only parking cells', async () => {
       const mockParkingCells = [
-        new ParkingCell({
-          id: 'cell1',
-          idStatic: 1,
-          state: 'reservado',
-          reservationDetails: reservationDetails
-        }),
-        new ParkingCell({
-          id: 'cell2',
-          idStatic: 2,
-          state: 'disponible',
-          reservationDetails: null
-        })
-      ];
-
-      const mockRecommendations = [
-        { id: '1', message: 'Consider reserving early', priority: 'high', type: 'availability' },
-        { id: '2', message: 'Parking is limited today', priority: 'medium', type: 'capacity' }
+        { id: '1', idStatic: 1, state: 'disponible' }
       ];
 
       mockGetAllParkingCellHandler.handle.mockResolvedValue(mockParkingCells);
+      mockGetRecommendationsHandler.handle.mockResolvedValue([]);
+
+      const result = await useCase.execute();
+
+      expect(result).toEqual({
+        parkingCells: mockParkingCells,
+        recommendations: []
+      });
+    });
+
+    it('should return data with only recommendations', async () => {
+      const mockRecommendations = [
+        { message: 'Recomendación 1', priority: 'high' }
+      ];
+
+      mockGetAllParkingCellHandler.handle.mockResolvedValue([]);
       mockGetRecommendationsHandler.handle.mockResolvedValue(mockRecommendations);
 
       const result = await useCase.execute();
 
-      expect(result.parkingSpaces).toHaveLength(2);
-      expect(result.recommendations).toHaveLength(2);
-      expect(result.parkingSpaces[0].state).toBe('reservado');
-      expect(result.parkingSpaces[0].reservationDetails).toBeInstanceOf(ReservationDetails);
-      expect(result.recommendations[0].priority).toBe('high');
+      expect(result).toEqual({
+        parkingCells: [],
+        recommendations: mockRecommendations
+      });
+    });
+
+    it('should handle large datasets', async () => {
+      const largeParkingCells = Array.from({ length: 1000 }, (_, i) => ({
+        id: i.toString(),
+        idStatic: i + 1,
+        state: i % 2 === 0 ? 'disponible' : 'ocupado'
+      }));
+
+      const largeRecommendations = Array.from({ length: 100 }, (_, i) => ({
+        message: `Recomendación ${i + 1}`,
+        priority: 'medium'
+      }));
+
+      mockGetAllParkingCellHandler.handle.mockResolvedValue(largeParkingCells);
+      mockGetRecommendationsHandler.handle.mockResolvedValue(largeRecommendations);
+
+      const result = await useCase.execute();
+
+      expect(result.parkingCells).toHaveLength(1000);
+      expect(result.recommendations).toHaveLength(100);
     });
   });
 });

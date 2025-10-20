@@ -1,20 +1,29 @@
 const logger = require('../../../src/core/utils/logger');
 
-// Mock console methods
-const originalConsole = global.console;
-const mockConsole = {
-  log: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn(),
-  info: jest.fn()
-};
+// Mock winston
+jest.mock('winston', () => {
+  const mockLogger = {
+    log: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn()
+  };
 
-beforeAll(() => {
-  global.console = mockConsole;
-});
-
-afterAll(() => {
-  global.console = originalConsole;
+  return {
+    createLogger: jest.fn(() => mockLogger),
+    format: {
+      combine: jest.fn(),
+      timestamp: jest.fn(),
+      json: jest.fn(),
+      colorize: jest.fn(),
+      simple: jest.fn()
+    },
+    transports: {
+      Console: jest.fn(),
+      File: jest.fn()
+    }
+  };
 });
 
 describe('Logger', () => {
@@ -23,11 +32,11 @@ describe('Logger', () => {
   });
 
   describe('log', () => {
-    it('should log info messages', () => {
-      const message = 'Test info message';
+    it('should log messages', () => {
+      const message = 'Test message';
       logger.log(message);
 
-      expect(mockConsole.log).toHaveBeenCalledWith(message);
+      expect(logger.log).toHaveBeenCalledWith(message);
     });
 
     it('should log messages with objects', () => {
@@ -35,7 +44,7 @@ describe('Logger', () => {
       const obj = { key: 'value' };
       logger.log(message, obj);
 
-      expect(mockConsole.log).toHaveBeenCalledWith(message, obj);
+      expect(logger.log).toHaveBeenCalledWith(message, obj);
     });
   });
 
@@ -44,7 +53,7 @@ describe('Logger', () => {
       const message = 'Test error message';
       logger.error(message);
 
-      expect(mockConsole.error).toHaveBeenCalledWith(message);
+      expect(logger.error).toHaveBeenCalledWith(message);
     });
 
     it('should log error messages with objects', () => {
@@ -52,7 +61,7 @@ describe('Logger', () => {
       const obj = { error: 'details' };
       logger.error(message, obj);
 
-      expect(mockConsole.error).toHaveBeenCalledWith(message, obj);
+      expect(logger.error).toHaveBeenCalledWith(message, obj);
     });
   });
 
@@ -61,7 +70,7 @@ describe('Logger', () => {
       const message = 'Test warning message';
       logger.warn(message);
 
-      expect(mockConsole.warn).toHaveBeenCalledWith(message);
+      expect(logger.warn).toHaveBeenCalledWith(message);
     });
 
     it('should log warning messages with objects', () => {
@@ -69,7 +78,7 @@ describe('Logger', () => {
       const obj = { warning: 'details' };
       logger.warn(message, obj);
 
-      expect(mockConsole.warn).toHaveBeenCalledWith(message, obj);
+      expect(logger.warn).toHaveBeenCalledWith(message, obj);
     });
   });
 
@@ -78,7 +87,7 @@ describe('Logger', () => {
       const message = 'Test info message';
       logger.info(message);
 
-      expect(mockConsole.info).toHaveBeenCalledWith(message);
+      expect(logger.info).toHaveBeenCalledWith(message);
     });
 
     it('should log info messages with objects', () => {
@@ -86,7 +95,7 @@ describe('Logger', () => {
       const obj = { info: 'details' };
       logger.info(message, obj);
 
-      expect(mockConsole.info).toHaveBeenCalledWith(message, obj);
+      expect(logger.info).toHaveBeenCalledWith(message, obj);
     });
   });
 
@@ -95,7 +104,7 @@ describe('Logger', () => {
       const message = 'Test debug message';
       logger.debug(message);
 
-      expect(mockConsole.log).toHaveBeenCalledWith(message);
+      expect(logger.debug).toHaveBeenCalledWith(message);
     });
 
     it('should log debug messages with objects', () => {
@@ -103,7 +112,7 @@ describe('Logger', () => {
       const obj = { debug: 'details' };
       logger.debug(message, obj);
 
-      expect(mockConsole.log).toHaveBeenCalledWith(message, obj);
+      expect(logger.debug).toHaveBeenCalledWith(message, obj);
     });
   });
 });

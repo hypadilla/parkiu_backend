@@ -1,4 +1,5 @@
 const UserMapper = require('../../../../mapping/userMapper');
+const UserNotFoundError = require('../../../../../errors/userNotFoundError');
 
 class GetAuthenticatedUserHandler {
     constructor(userRepository) {

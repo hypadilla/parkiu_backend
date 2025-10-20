@@ -3,29 +3,48 @@ const VerifyTokenCommand = require('../../../src/core/services/features/auth/com
 describe('VerifyTokenCommand', () => {
   describe('Constructor', () => {
     it('should create command with token', () => {
-      const commandData = {
-        token: 'jwt-token-123'
-      };
+      const command = new VerifyTokenCommand('valid-token');
 
-      const command = new VerifyTokenCommand(commandData);
-
-      expect(command.token).toBe('jwt-token-123');
+      expect(command.token).toBe('valid-token');
     });
 
-    it('should handle empty command data', () => {
-      const commandData = {};
+    it('should handle empty token', () => {
+      const command = new VerifyTokenCommand('');
 
-      const command = new VerifyTokenCommand(commandData);
+      expect(command.token).toBe('');
+    });
+
+    it('should handle null token', () => {
+      const command = new VerifyTokenCommand(null);
+
+      expect(command.token).toBeNull();
+    });
+
+    it('should handle undefined token', () => {
+      const command = new VerifyTokenCommand(undefined);
 
       expect(command.token).toBeUndefined();
     });
 
-    it('should handle null command data', () => {
-      const commandData = null;
+    it('should handle JWT format token', () => {
+      const jwtToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const command = new VerifyTokenCommand(jwtToken);
 
-      const command = new VerifyTokenCommand(commandData);
+      expect(command.token).toBe(jwtToken);
+    });
 
-      expect(command.token).toBeUndefined();
+    it('should handle long token', () => {
+      const longToken = 'a'.repeat(1000);
+      const command = new VerifyTokenCommand(longToken);
+
+      expect(command.token).toBe(longToken);
+    });
+
+    it('should handle special characters in token', () => {
+      const specialToken = 'token-with-special-chars!@#$%^&*()';
+      const command = new VerifyTokenCommand(specialToken);
+
+      expect(command.token).toBe(specialToken);
     });
   });
 });

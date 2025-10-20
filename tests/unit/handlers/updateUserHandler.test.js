@@ -1,146 +1,155 @@
 const UpdateUserHandler = require('../../../src/core/services/features/user/command/updateUserCommand/updateUserHandler');
 const User = require('../../../src/core/domain/user');
+const bcrypt = require('bcrypt');
+
+// Mock bcrypt
+jest.mock('bcrypt');
 
 describe('UpdateUserHandler', () => {
-  let mockUserRepository;
-  let mockAuthService;
   let handler;
+  let mockUserRepository;
 
   beforeEach(() => {
     mockUserRepository = {
-      getById: jest.fn(),
       update: jest.fn()
     };
-    mockAuthService = {
-      hashPassword: jest.fn()
-    };
-    handler = new UpdateUserHandler(mockUserRepository, mockAuthService);
+    handler = new UpdateUserHandler(mockUserRepository);
+    jest.clearAllMocks();
   });
 
   describe('handle', () => {
     it('should update user successfully', async () => {
       const command = {
         id: '1',
-        updateData: {
-          name: 'Updated',
-          email: 'updated@example.com'
-        }
+        name: 'Updated',
+        email: 'updated@example.com'
       };
 
-      const existingUser = new User({
+      const mockUpdatedUser = new User({
         id: '1',
         username: 'testuser',
-        email: 'test@example.com',
-        name: 'Test',
-        lastName: 'User'
-      });
-
-      const updatedUser = new User({
-        id: '1',
-        username: 'testuser',
-        email: 'updated@example.com',
         name: 'Updated',
-        lastName: 'User'
+        email: 'updated@example.com'
       });
 
-      mockUserRepository.getById.mockResolvedValue(existingUser);
-      mockUserRepository.update.mockResolvedValue(updatedUser);
+      mockUserRepository.update.mockResolvedValue(mockUpdatedUser);
 
       const result = await handler.handle(command);
 
-      expect(mockUserRepository.getById).toHaveBeenCalledWith('1');
-      expect(mockUserRepository.update).toHaveBeenCalledWith('1', command.updateData);
-      expect(result).toBeInstanceOf(User);
+      expect(mockUserRepository.update).toHaveBeenCalledWith('1', {
+        name: 'Updated',
+        email: 'updated@example.com'
+      });
+      expect(result).toEqual(expect.objectContaining({
+        id: '1',
+        username: 'testuser',
+        email: 'updated@example.com'
+      }));
       expect(result.name).toBe('Updated');
-      expect(result.email).toBe('updated@example.com');
     });
 
     it('should update user with password hashing', async () => {
       const command = {
         id: '1',
-        updateData: {
-          password: 'newpassword123'
-        }
+        password: 'newpassword123'
       };
 
-      const existingUser = new User({
-        id: '1',
-        username: 'testuser',
-        email: 'test@example.com'
-      });
+      const hashedPassword = 'hashedpassword123';
+      bcrypt.hash.mockResolvedValue(hashedPassword);
 
-      const hashedPassword = 'hashednewpassword123';
-      const updatedUser = new User({
+      const mockUpdatedUser = new User({
         id: '1',
         username: 'testuser',
-        email: 'test@example.com',
         password: hashedPassword
       });
 
-      mockUserRepository.getById.mockResolvedValue(existingUser);
-      mockAuthService.hashPassword.mockResolvedValue(hashedPassword);
-      mockUserRepository.update.mockResolvedValue(updatedUser);
+      mockUserRepository.update.mockResolvedValue(mockUpdatedUser);
 
       const result = await handler.handle(command);
 
-      expect(mockAuthService.hashPassword).toHaveBeenCalledWith('newpassword123');
+      expect(bcrypt.hash).toHaveBeenCalledWith('newpassword123', 10);
       expect(mockUserRepository.update).toHaveBeenCalledWith('1', {
         password: hashedPassword
       });
-      expect(result).toBeInstanceOf(User);
-    });
-
-    it('should throw error when user not found', async () => {
-      const command = {
-        id: 'nonexistent',
-        updateData: {
-          name: 'Updated'
-        }
-      };
-
-      mockUserRepository.getById.mockResolvedValue(null);
-
-      await expect(handler.handle(command)).rejects.toThrow('Usuario no encontrado');
-      expect(mockUserRepository.getById).toHaveBeenCalledWith('nonexistent');
-      expect(mockUserRepository.update).not.toHaveBeenCalled();
-    });
-
-    it('should handle repository errors', async () => {
-      const command = {
-        id: '1',
-        updateData: {
-          name: 'Updated'
-        }
-      };
-
-      const existingUser = new User({
+      expect(result).toEqual(expect.objectContaining({
         id: '1',
         username: 'testuser'
-      });
+      }));
+    });
 
-      mockUserRepository.getById.mockResolvedValue(existingUser);
-      mockUserRepository.update.mockRejectedValue(new Error('Update error'));
+    it('should throw error when user id is missing', async () => {
+      const command = {
+        name: 'Updated'
+        // Missing id
+      };
 
-      await expect(handler.handle(command)).rejects.toThrow('Update error');
+      await expect(handler.handle(command)).rejects.toThrow('El ID del usuario es obligatorio');
     });
 
     it('should handle password hashing errors', async () => {
       const command = {
         id: '1',
-        updateData: {
-          password: 'newpassword123'
-        }
+        password: 'newpassword123'
       };
 
-      const existingUser = new User({
-        id: '1',
-        username: 'testuser'
-      });
-
-      mockUserRepository.getById.mockResolvedValue(existingUser);
-      mockAuthService.hashPassword.mockRejectedValue(new Error('Hashing error'));
+      bcrypt.hash.mockRejectedValue(new Error('Hashing error'));
 
       await expect(handler.handle(command)).rejects.toThrow('Hashing error');
+    });
+
+    it('should update user with all fields', async () => {
+      const command = {
+        id: '1',
+        name: 'Updated',
+        lastName: 'User',
+        email: 'updated@example.com',
+        role: 'admin',
+        permissions: ['manage_users'],
+        password: 'newpassword123'
+      };
+
+      const hashedPassword = 'hashedpassword123';
+      bcrypt.hash.mockResolvedValue(hashedPassword);
+
+      const mockUpdatedUser = new User({
+        id: '1',
+        username: 'testuser',
+        name: 'Updated',
+        lastName: 'User',
+        email: 'updated@example.com',
+        role: 'admin',
+        permissions: ['manage_users'],
+        password: hashedPassword
+      });
+
+      mockUserRepository.update.mockResolvedValue(mockUpdatedUser);
+
+      const result = await handler.handle(command);
+
+      expect(mockUserRepository.update).toHaveBeenCalledWith('1', {
+        name: 'Updated',
+        lastName: 'User',
+        email: 'updated@example.com',
+        role: 'admin',
+        permissions: ['manage_users'],
+        password: hashedPassword
+      });
+      expect(result).toEqual(expect.objectContaining({
+        id: '1',
+        username: 'testuser',
+        email: 'updated@example.com'
+      }));
+    });
+
+    it('should handle repository errors', async () => {
+      const command = {
+        id: '1',
+        name: 'Updated'
+      };
+
+      mockUserRepository.update.mockRejectedValue(new Error('Repository error'));
+
+      await expect(handler.handle(command)).rejects.toThrow('Repository error');
     });
   });
 });

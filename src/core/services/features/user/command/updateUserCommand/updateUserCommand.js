@@ -1,5 +1,6 @@
 class UpdateUserCommand {
-    constructor(id, {password, email, name, lastName, role, permissions = []}) {
+    constructor(id, updateData = {}) {
+        const {password, email, name, lastName, role, permissions = []} = updateData || {};
         this.id = id;
         this.email = email;
         this.password = password;

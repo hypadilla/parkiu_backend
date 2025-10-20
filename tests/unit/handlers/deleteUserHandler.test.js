@@ -1,68 +1,65 @@
 const DeleteUserHandler = require('../../../src/core/services/features/user/command/deleteUserCommand/deleteUserHandler');
-const User = require('../../../src/core/domain/user');
 
 describe('DeleteUserHandler', () => {
-  let mockUserRepository;
   let handler;
+  let mockUserRepository;
 
   beforeEach(() => {
     mockUserRepository = {
-      getById: jest.fn(),
       delete: jest.fn()
     };
     handler = new DeleteUserHandler(mockUserRepository);
+    jest.clearAllMocks();
   });
 
   describe('handle', () => {
     it('should delete user successfully', async () => {
-      const command = { id: '1' };
-      const userData = {
-        id: '1',
-        username: 'testuser',
-        email: 'test@example.com'
+      const command = {
+        id: '1'
       };
 
-      const user = new User(userData);
-      mockUserRepository.getById.mockResolvedValue(user);
       mockUserRepository.delete.mockResolvedValue(true);
 
       const result = await handler.handle(command);
 
-      expect(mockUserRepository.getById).toHaveBeenCalledWith('1');
       expect(mockUserRepository.delete).toHaveBeenCalledWith('1');
       expect(result).toBe(true);
     });
 
-    it('should throw error when user not found', async () => {
-      const command = { id: 'nonexistent' };
+    it('should return false when user not found', async () => {
+      const command = {
+        id: 'nonexistent'
+      };
 
-      mockUserRepository.getById.mockResolvedValue(null);
+      mockUserRepository.delete.mockResolvedValue(false);
 
-      await expect(handler.handle(command)).rejects.toThrow('Usuario no encontrado');
-      expect(mockUserRepository.getById).toHaveBeenCalledWith('nonexistent');
-      expect(mockUserRepository.delete).not.toHaveBeenCalled();
+      const result = await handler.handle(command);
+
+      expect(mockUserRepository.delete).toHaveBeenCalledWith('nonexistent');
+      expect(result).toBe(false);
     });
 
     it('should handle repository errors', async () => {
-      const command = { id: '1' };
-      const userData = {
-        id: '1',
-        username: 'testuser'
+      const command = {
+        id: '1'
       };
 
-      const user = new User(userData);
-      mockUserRepository.getById.mockResolvedValue(user);
-      mockUserRepository.delete.mockRejectedValue(new Error('Delete error'));
+      mockUserRepository.delete.mockRejectedValue(new Error('Repository error'));
 
-      await expect(handler.handle(command)).rejects.toThrow('Delete error');
+      await expect(handler.handle(command)).rejects.toThrow('Repository error');
     });
 
-    it('should handle getById errors', async () => {
-      const command = { id: '1' };
+    it('should handle missing id', async () => {
+      const command = {
+        // Missing id
+      };
 
-      mockUserRepository.getById.mockRejectedValue(new Error('GetById error'));
+      mockUserRepository.delete.mockResolvedValue(false);
 
-      await expect(handler.handle(command)).rejects.toThrow('GetById error');
+      const result = await handler.handle(command);
+
+      expect(mockUserRepository.delete).toHaveBeenCalledWith(undefined);
+      expect(result).toBe(false);
     });
   });
 });
