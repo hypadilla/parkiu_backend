@@ -6,7 +6,8 @@ const parkingCellSchema = new mongoose.Schema({
     type: Number,
     required: true,
     unique: true,
-    min: 1
+    min: 1,
+    index: true
   },
   state: {
     type: String,
@@ -51,7 +52,6 @@ const parkingCellSchema = new mongoose.Schema({
 });
 
 // Índices para mejor rendimiento
-parkingCellSchema.index({ idStatic: 1 });
 parkingCellSchema.index({ state: 1 });
 parkingCellSchema.index({ 'reservationDetails.reservedBy': 1 });
 parkingCellSchema.index({ lastModifiedDate: -1 });

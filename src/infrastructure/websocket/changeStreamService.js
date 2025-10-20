@@ -19,19 +19,27 @@ class ChangeStreamService {
         await mongoService.connect();
       }
 
-      // Change Stream para ParkingCells
-      await this.startParkingCellChangeStream();
+      // Verificar si MongoDB soporta Change Streams (replica sets)
+      const connection = mongoService.getConnection();
+      const adminDb = connection.db().admin();
       
-      // Change Stream para Users (opcional)
-      await this.startUserChangeStream();
-      
-      // Change Stream para Recommendations
-      await this.startRecommendationChangeStream();
-
-      console.log('✅ Change Streams iniciados correctamente');
+      try {
+        await adminDb.replSetGetStatus();
+        // Es un replica set, podemos usar Change Streams
+        await this.startParkingCellChangeStream();
+        await this.startUserChangeStream();
+        await this.startRecommendationChangeStream();
+        console.log('✅ Change Streams iniciados correctamente');
+      } catch (replicaError) {
+        // No es un replica set, usar polling como fallback
+        console.log('⚠️ MongoDB no es un replica set, usando polling para tiempo real');
+        this.startPollingMode();
+      }
     } catch (error) {
       console.error('❌ Error iniciando Change Streams:', error);
-      throw error;
+      // Continuar sin Change Streams
+      console.log('⚠️ Continuando sin Change Streams, usando polling');
+      this.startPollingMode();
     }
   }
 
@@ -203,6 +211,31 @@ class ChangeStreamService {
       console.error('❌ Error cerrando Change Streams:', error);
       throw error;
     }
+  }
+
+  startPollingMode() {
+    console.log('🔄 Iniciando modo polling para tiempo real...');
+    
+    // Polling cada 5 segundos para cambios en ParkingCells
+    setInterval(async () => {
+      try {
+        const latestCells = await ParkingCell.find()
+          .sort({ lastModifiedDate: -1 })
+          .limit(10)
+          .lean();
+        
+        if (this.io && latestCells.length > 0) {
+          this.io.emit('parkingCellsUpdate', {
+            data: latestCells,
+            timestamp: new Date().toISOString()
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error en polling de ParkingCells:', error);
+      }
+    }, 5000);
+
+    console.log('✅ Modo polling iniciado correctamente');
   }
 
   getChangeStreamStatus() {
