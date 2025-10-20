@@ -2,7 +2,7 @@
  * @swagger
  * tags:
  *   name: Dashboard
- *   description: Endpoints for retrieving dashboard data
+ *   description: Endpoints para obtener datos del dashboard
  */
 
 /**

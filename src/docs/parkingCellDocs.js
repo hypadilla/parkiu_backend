@@ -188,7 +188,7 @@
  *   get:
  *     security:
  *       - bearerAuth: []
- *     summary: Get all parking cells
+ *     summary: Obtener todas las celdas de parqueo
  *     tags: [ParkingCells]
  *     responses:
  *       200:
