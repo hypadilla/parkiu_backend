@@ -1,7 +1,11 @@
 const ParkingCell = require('../database/models/ParkingCell');
 const ParkingCellMapper = require('../../core/services/mapping/parkingCellMapper');
+const RealtimeEvents = require('../websocket/realtimeEvents');
 
 class ParkingCellRepository {
+  constructor(io = null) {
+    this.realtimeEvents = io ? new RealtimeEvents(io) : null;
+  }
   async bulkStatusUpdate(cells) {
     try {
       const results = [];
@@ -64,6 +68,12 @@ class ParkingCellRepository {
         updateData,
         options
       ).lean();
+
+      // Emitir evento realtime si está disponible
+      if (this.realtimeEvents && cell) {
+        await this.realtimeEvents.emitParkingCellUpdated(cell._id.toString(), updateData);
+        await this.realtimeEvents.emitStatisticsUpdated();
+      }
 
       return cell._id.toString();
     } catch (error) {

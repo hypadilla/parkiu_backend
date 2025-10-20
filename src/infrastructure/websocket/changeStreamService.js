@@ -216,24 +216,39 @@ class ChangeStreamService {
   startPollingMode() {
     console.log('🔄 Iniciando modo polling para tiempo real...');
     
-    // Polling cada 5 segundos para cambios en ParkingCells
+    let lastUpdate = new Date();
+    
+    // Polling cada 3 segundos para cambios en ParkingCells
     setInterval(async () => {
       try {
-        const latestCells = await ParkingCell.find()
-          .sort({ lastModifiedDate: -1 })
-          .limit(10)
-          .lean();
+        const latestCells = await ParkingCell.find({
+          lastModifiedDate: { $gt: lastUpdate }
+        })
+        .sort({ lastModifiedDate: -1 })
+        .lean();
         
         if (this.io && latestCells.length > 0) {
           this.io.emit('parkingCellsUpdate', {
             data: latestCells,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            type: 'incremental'
+          });
+          
+          // Actualizar timestamp del último cambio
+          lastUpdate = new Date();
+        }
+        
+        // Enviar heartbeat cada 30 segundos
+        if (Date.now() % 30000 < 3000) {
+          this.io.emit('heartbeat', {
+            timestamp: new Date().toISOString(),
+            status: 'alive'
           });
         }
       } catch (error) {
         console.error('❌ Error en polling de ParkingCells:', error);
       }
-    }, 5000);
+    }, 3000);
 
     console.log('✅ Modo polling iniciado correctamente');
   }
