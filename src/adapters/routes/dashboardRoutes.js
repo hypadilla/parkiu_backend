@@ -1,4 +1,7 @@
 const express = require('express');
+const { authMiddleware } = require('../middlewares/auth/authMiddleware');
+const requirePermission = require('../middlewares/auth/requirePermission');
+const { PERMISSIONS } = require('../../config/permissions');
 const DashboardController = require('../controllers/dashboardController');
 const ParkingCellRepository = require('../../infrastructure/repositories/parkingCellRepository');
 const HistoricalRecordRepository = require('../../infrastructure/repositories/historicalRecordRepository');
@@ -6,7 +9,7 @@ const GetRecommendationsHandler = require('../../core/services/features/recommen
 const GetAllParkingCellHandler = require('../../core/services/features/parkingCell/queries/getAllParkingCell/getAllParkingCellHandler');
 const GetParkingCellWithRecomendationsUseCase = require('../../core/usecases/getParkingCellWithRecomendationsUseCase');
 
-module.exports = () => {
+module.exports = ({ authService, tokenBlacklist }) => {
     const router = express.Router();
 
     const parkingCellRepository = new ParkingCellRepository();
@@ -19,7 +22,7 @@ module.exports = () => {
 
     const dashboardController = new DashboardController(getParkingCellWithRecomendationsUseCase);
 
-    router.get('/dashboard', (req, res) => dashboardController.getDashboardData(req, res));
+    router.get('/dashboard', authMiddleware(authService, tokenBlacklist), requirePermission(PERMISSIONS.CAN_VIEW_DASHBOARD), (req, res) => dashboardController.getDashboardData(req, res));
 
     return router;
 };

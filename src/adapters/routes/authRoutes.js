@@ -28,6 +28,7 @@ module.exports = ({ authService, tokenBlacklist }) => {
     router.post('/auth/logout', authMiddleware(authService, tokenBlacklist), (req, res) => authController.logout(req, res));
     router.post('/auth/verify-token', authController.verifyToken.bind(authController));
     router.post('/auth/refresh-token', authController.refreshToken.bind(authController));
+    router.post('/auth/refresh', authController.refreshToken.bind(authController));
 
     return router;
 };

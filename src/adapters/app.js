@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
@@ -20,7 +21,7 @@ const server = createServer(app);
 const io = webSocketService.initialize(server);
 
 const userRepository = new UserRepository();
-const authService = new JwtAuthService('your-secret-key', '1h', userRepository);
+const authService = new JwtAuthService(process.env.JWT_SECRET || 'dev-secret', process.env.JWT_EXPIRES_IN || '1h', userRepository);
 const tokenBlacklist = new TokenBlacklist();
 
 const morganMiddleware = morgan('combined', {
@@ -39,6 +40,21 @@ const corsOptions = {
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization']
 };
+// CORS dinámico por origen
+app.use((req, res, next) => {
+  const origins = Array.isArray(corsOptions.origin) ? corsOptions.origin : (typeof corsOptions.origin === 'function' ? [] : []);
+  const requestOrigin = req.headers.origin;
+  if (requestOrigin && (process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').includes(requestOrigin) : origins.includes(requestOrigin))) {
+    res.header('Access-Control-Allow-Origin', requestOrigin);
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', corsOptions.methods);
+  res.header('Access-Control-Allow-Headers', corsOptions.allowedHeaders.join(','));
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 app.use(cors(corsOptions));
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

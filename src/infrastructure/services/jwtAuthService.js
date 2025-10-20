@@ -27,7 +27,15 @@ class JwtAuthService {
 
     async generateToken(user) {
         return jwt.sign(
-            { id: user.id, username: user.username, permissions: user.permissions || [] },
+            { 
+                id: user.id, 
+                username: user.username, 
+                email: user.email || '',
+                name: user.name || '',
+                lastName: user.lastName || '',
+                role: user.role || 'user',
+                permissions: user.permissions || [] 
+            },
             this.secretKey,
             { expiresIn: this.expiresIn }
         );

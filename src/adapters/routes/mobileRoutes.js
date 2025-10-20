@@ -1,7 +1,4 @@
 const express = require('express');
-const { authMiddleware } = require('../middlewares/auth/authMiddleware');
-const requirePermission = require('../middlewares/auth/requirePermission');
-const { PERMISSIONS } = require('../../config/permissions');
 const ParkingCellController = require('../controllers/parkingCellController');
 const ParkingCellRepository = require('../../infrastructure/repositories/parkingCellRepository');
 const HistoricalRecordRepository = require('../../infrastructure/repositories/historicalRecordRepository');
@@ -9,20 +6,22 @@ const BulkStatusWithHistoryUseCase = require('../../core/usecases/bulkStatusWith
 const GetAllParkingCellHandler = require('../../core/services/features/parkingCell/queries/getAllParkingCell/getAllParkingCellHandler');
 const UpsertParkingCellHandler = require('../../core/services/features/parkingCell/command/upsertParkingCell/upsertParkingCellHandler');
 
-module.exports = ({ authService, tokenBlacklist }) => {
+module.exports = () => {
     const router = express.Router();
+
     const parkingCellRepository = new ParkingCellRepository();
     const historicalRecordRepository = new HistoricalRecordRepository();
     const bulkStatusWithHistoryUseCase = new BulkStatusWithHistoryUseCase(parkingCellRepository, historicalRecordRepository);
     const getAllParkingCellHandler = new GetAllParkingCellHandler(parkingCellRepository);
     const upsertParkingCell = new UpsertParkingCellHandler(parkingCellRepository);
-    
 
     const controller = new ParkingCellController(bulkStatusWithHistoryUseCase, getAllParkingCellHandler, upsertParkingCell);
 
-    router.post('/parking-cells/bulk-status', authMiddleware(authService, tokenBlacklist), requirePermission(PERMISSIONS.CAN_BULK_UPDATE_PARKING_CELLS), (req, res) => controller.bulkStatusUpdate(req, res));
-    router.get('/parking-cells', authMiddleware(authService, tokenBlacklist), requirePermission(PERMISSIONS.CAN_VIEW_PARKING_CELLS), (req, res) => controller.getAll(req, res));
-    router.put('/parking-cells/:id/status', authMiddleware(authService, tokenBlacklist), requirePermission(PERMISSIONS.CAN_UPDATE_PARKING_CELLS), (req, res) => controller.updateStatus(req, res));
+    // Endpoints para dispositivos móviles sin autenticación
+    // Solo permiten operaciones básicas de lectura y actualización de estado
+    router.get('/mobile/parking-cells', (req, res) => controller.getAll(req, res));
+    router.post('/mobile/parking-cells/bulk-status', (req, res) => controller.bulkStatusUpdate(req, res));
+    router.put('/mobile/parking-cells/:id/status', (req, res) => controller.updateStatus(req, res));
 
     return router;
 };

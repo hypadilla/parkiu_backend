@@ -3,6 +3,7 @@ const LogoutUserCommand = require('../../core/services/features/auth/command/log
 const VerifyTokenCommand = require('../../core/services/features/auth/command/verifyToken/verifyTokenCommand');
 const RefreshTokenCommand = require('../../core/services/features/auth/command/refreshToken/refreshTokenCommand');
 const logger = require('../../core/utils/logger');
+const jwt = require('jsonwebtoken');
 
 class AuthController {
     constructor(authenticateUserHandler, logoutUserHandler, verifyTokenHandler, refreshTokenHandler) {
@@ -23,10 +24,18 @@ class AuthController {
             const command = new AuthenticateUserCommand(username, password);
             const { userClient, token } = await this.authenticateUserHandler.handle(command);
 
+            // Generar refresh token
+            const refreshToken = jwt.sign(
+                { id: userClient.id, username: userClient.username },
+                process.env.REFRESH_SECRET || process.env.JWT_SECRET || 'dev-secret',
+                { expiresIn: process.env.REFRESH_EXPIRES_IN || '7d' }
+            );
+
             return res.status(200).json({
                 message: 'Login exitoso',
                 user: userClient,
-                token
+                token,
+                refreshToken
             });
         } catch (error) {
             logger.error('Error en login', { error: error.message });
@@ -96,8 +105,20 @@ class AuthController {
                 return res.status(400).json({ message: 'Refresh token requerido' });
             }
 
-            const command = new RefreshTokenCommand(refreshToken);
-            const newToken = await this.refreshTokenHandler.handle(command);
+            // Validar refresh token
+            let decoded;
+            try {
+                decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET || process.env.JWT_SECRET || 'dev-secret');
+            } catch (e) {
+                return res.status(401).json({ message: 'Refresh token inválido o expirado' });
+            }
+
+            // Emitir nuevo access token con info básica
+            const newToken = jwt.sign(
+                { id: decoded.id, username: decoded.username },
+                process.env.JWT_SECRET || 'dev-secret',
+                { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+            );
 
             return res.status(200).json({
                 message: 'Token refrescado exitosamente',

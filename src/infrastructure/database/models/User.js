@@ -36,12 +36,18 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['USER', 'ADMIN'],
-    default: 'USER'
+    enum: ['user', 'admin', 'device'],
+    default: 'user'
   },
   permissions: [{
     type: String,
-    enum: ['CAN_VIEW_USERS', 'CAN_EDIT_USERS', 'CAN_DELETE_USERS', 'CAN_CREATE_RESERVATION', 'CAN_VIEW_RESERVATIONS']
+    enum: [
+      'CAN_VIEW_USERS', 'CAN_CREATE_USERS', 'CAN_UPDATE_USERS', 'CAN_DELETE_USERS',
+      'CAN_VIEW_PARKING_CELLS', 'CAN_UPDATE_PARKING_CELLS', 'CAN_BULK_UPDATE_PARKING_CELLS',
+      'CAN_CREATE_RESERVATION', 'CAN_CANCEL_RESERVATION', 'CAN_VIEW_RESERVATIONS',
+      'CAN_VIEW_DASHBOARD', 'CAN_VIEW_RECOMMENDATIONS', 'CAN_VIEW_REPORTS',
+      'CAN_VIEW_SYSTEM_STATUS', 'CAN_MANAGE_SYSTEM'
+    ]
   }],
   createdDate: {
     type: Date,

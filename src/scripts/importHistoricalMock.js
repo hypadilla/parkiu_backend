@@ -1,9 +1,8 @@
 // src/scripts/importHistoricalMock.js
 const fs = require('fs');
 const path = require('path');
-
-// Asegúrate de que este require apunte a tu archivo de configuración de Firebase
-const db = require('../infrastructure/database/firebaseService');
+const mongoose = require('mongoose');
+const HistoricalRecord = require('../infrastructure/database/models/HistoricalRecord');
 
 // Ruta absoluta al archivo JSON
 const filePath = path.join(__dirname, 'historicalDataMock.json');
@@ -20,27 +19,32 @@ try {
 
 // Función de importación
 async function importData() {
-  console.log(`📦 Importando ${data.length} registros a Firestore...`);
+  try {
+    // Conectar a MongoDB
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/parkiu');
+    console.log('✅ Conectado a MongoDB');
+    
+    console.log(`📦 Importando ${data.length} registros a MongoDB...`);
 
-  const batchSize = 500;
-  let batch = db.batch();
-  let counter = 0;
+    const batchSize = 1000; // MongoDB puede manejar más registros por batch
+    let counter = 0;
 
-  for (let i = 0; i < data.length; i++) {
-    const record = data[i];
-    const docRef = db.collection('historicalData').doc(); // genera un ID aleatorio
-    batch.set(docRef, record);
-    counter++;
-
-    // Ejecuta el batch cada 500 escrituras (límite Firestore)
-    if (counter % batchSize === 0 || i === data.length - 1) {
-      await batch.commit();
-      console.log(`✅ Batch ${Math.ceil(counter / batchSize)} escrito.`);
-      batch = db.batch(); // inicia nuevo batch
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+      
+      // Insertar batch en MongoDB
+      await HistoricalRecord.insertMany(batch, { ordered: false });
+      
+      counter += batch.length;
+      console.log(`✅ Batch ${Math.ceil(counter / batchSize)} escrito. ${counter}/${data.length} registros.`);
     }
-  }
 
-  console.log('✅ Importación completada con éxito.');
+    console.log('✅ Importación completada con éxito.');
+    await mongoose.disconnect();
+  } catch (error) {
+    console.error('❌ Error durante la importación:', error.message);
+    throw error;
+  }
 }
 
 // Ejecutar
