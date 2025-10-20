@@ -12,7 +12,7 @@ class MongoService {
         return;
       }
 
-      const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/parkiu';
+      const mongoUri = process.env.MONGO_URL || process.env.MONGODB_URI || 'mongodb://localhost:27017/parkiu';
       
       await mongoose.connect(mongoUri, {
         useNewUrlParser: true,
