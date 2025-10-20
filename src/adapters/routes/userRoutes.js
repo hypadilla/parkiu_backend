@@ -37,7 +37,11 @@ module.exports = ({ authService, tokenBlacklist }) => {
         getAllUsersHandler
     );
 
+    // Ruta original que requiere autenticación y permisos
     router.post('/auth/register', authMiddleware(authService, tokenBlacklist), requirePermission('CAN_CREATE_USERS'), validateUserRegister, (req, res) => userController.registerUser(req, res));
+    
+    // Nueva ruta temporal para crear un usuario de prueba sin autenticación
+    router.post('/auth/register-test-user', validateUserRegister, (req, res) => userController.registerUser(req, res));
 
     router.delete('/user/:id', authMiddleware(authService, tokenBlacklist), requirePermission('CAN_DELETE_USERS'), validateUserDelete, (req, res) => userController.deleteUser(req, res));
 

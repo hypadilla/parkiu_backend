@@ -13,7 +13,7 @@ const options = {
       { url: "http://localhost:3000", description: "Servidor local" },
 
       {
-        url: "https://mi-api-produccion.com",
+        url: "https://parkiubackend-production.up.railway.app",
         description: "Servidor de producción",
       },
     ],
