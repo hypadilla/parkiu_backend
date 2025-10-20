@@ -21,7 +21,7 @@ class ChangeStreamService {
 
       // Verificar si MongoDB soporta Change Streams (replica sets)
       const connection = mongoService.getConnection();
-      const adminDb = connection.db().admin();
+      const adminDb = connection.admin();
       
       try {
         await adminDb.replSetGetStatus();

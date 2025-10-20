@@ -29,8 +29,7 @@ const recommendationSchema = new mongoose.Schema({
     type: Date,
     default: function() {
       return new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas por defecto
-    },
-    index: true
+    }
   },
   createdDate: {
     type: Date,
