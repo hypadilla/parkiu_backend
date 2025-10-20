@@ -9,6 +9,29 @@
  * @swagger
  * components:
  *   schemas:
+ *     ReservationDetails:
+ *       type: object
+ *       properties:
+ *         reservedBy:
+ *           type: string
+ *           description: Identificador del usuario que reserva
+ *           example: "user_123"
+ *         startTime:
+ *           type: string
+ *           format: date-time
+ *           example: "2025-01-01T10:00:00.000Z"
+ *         endTime:
+ *           type: string
+ *           format: date-time
+ *           example: "2025-01-01T11:00:00.000Z"
+ *         reason:
+ *           type: string
+ *           example: "Reunión"
+ *       required:
+ *         - reservedBy
+ *         - startTime
+ *         - endTime
+ *
  *     ParkingCellUpdate:
  *       type: object
  *       properties:
@@ -17,8 +40,12 @@
  *           example: 6
  *         state:
  *           type: string
- *           enum: [ocupado, disponible]
+ *           enum: [disponible, ocupado, reservado, inhabilitado]
  *           example: ocupado
+ *         reservationDetails:
+ *           oneOf:
+ *             - $ref: '#/components/schemas/ReservationDetails'
+ *             - type: "null"
  *       required:
  *         - idStatic
  *         - state
@@ -50,11 +77,25 @@
  *     ParkingCellResponse:
  *       type: object
  *       properties:
+ *         id:
+ *           type: string
+ *           description: ObjectId de MongoDB
+ *           example: "507f1f77bcf86cd799439011"
  *         idStatic:
  *           type: integer
  *         state:
  *           type: string
- *           enum: [ocupado, disponible]
+ *           enum: [disponible, ocupado, reservado, inhabilitado]
+ *         ubicacion:
+ *           type: string
+ *           example: "Nivel 1, Celda 6"
+ *         tipo:
+ *           type: string
+ *           enum: [moto, carro, discapacitado]
+ *         reservationDetails:
+ *           oneOf:
+ *             - $ref: '#/components/schemas/ReservationDetails'
+ *             - type: "null"
  *         lastModifiedDate:
  *           type: string
  *           format: date-time
@@ -71,6 +112,8 @@
  * @swagger
  * /api/parking-cells/bulk-status:
  *   post:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Bulk update the status of parking cells
  *     tags: [ParkingCells]
  *     requestBody:
@@ -98,6 +141,8 @@
  *
  * /api/parking-cells/{id}/status:
  *   put:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Update the status of a single parking cell
  *     tags: [ParkingCells]
  *     parameters:
@@ -141,6 +186,8 @@
  *
  * /api/parking-cells:
  *   get:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Get all parking cells
  *     tags: [ParkingCells]
  *     responses:

@@ -61,6 +61,8 @@
  * @swagger
  * /api/dashboard:
  *   get:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Obtener datos del dashboard
  *     tags: [Dashboard]
  *     responses:
@@ -76,4 +78,19 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/DashboardError'
+ */
+
+/**
+ * @swagger
+ * /api/recommendations:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Listar recomendaciones activas y no expiradas
+ *     tags: [Dashboard]
+ *     responses:
+ *       200:
+ *         description: Lista de recomendaciones
+ *       500:
+ *         description: Error interno del servidor
  */

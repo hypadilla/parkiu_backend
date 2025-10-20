@@ -9,7 +9,31 @@
  * @swagger
  * components:
  *   schemas:
- *     Auth:
+ *     RegisterRequest:
+ *       type: object
+ *       properties:
+ *         username:
+ *           type: string
+ *           example: apuerta
+ *         email:
+ *           type: string
+ *           format: email
+ *           example: apuerta@example.com
+ *         password:
+ *           type: string
+ *           example: 12345678
+ *         name:
+ *           type: string
+ *           example: Ana
+ *         lastName:
+ *           type: string
+ *           example: Puerta
+ *       required:
+ *         - username
+ *         - email
+ *         - password
+ *
+ *     LoginRequest:
  *       type: object
  *       properties:
  *         username:
@@ -42,18 +66,18 @@
  *     Error:
  *       type: object
  *       properties:
- *         error:
- *           type: object
- *           properties:
- *             type:
- *               type: string
- *               example: ValidationError
- *             message:
- *               type: string
- *               example: "Credenciales inválidas"
- *             stack:
- *               type: string
- *               example: "Error stack trace"
+ *         message:
+ *           type: string
+ *           example: "Credenciales inválidas"
+ *         errors:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               msg:
+ *                 type: string
+ *               path:
+ *                 type: string
  */
 
 /**
@@ -67,7 +91,7 @@
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Auth'
+ *             $ref: '#/components/schemas/RegisterRequest'
  *     responses:
  *       201:
  *         description: Usuario registrado correctamente
@@ -99,7 +123,7 @@
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Auth'
+ *             $ref: '#/components/schemas/LoginRequest'
  *     responses:
  *       200:
  *         description: Login exitoso y token generado
