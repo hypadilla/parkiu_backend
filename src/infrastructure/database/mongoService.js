@@ -15,13 +15,9 @@ class MongoService {
       const mongoUri = process.env.MONGO_URL || process.env.MONGODB_URI || 'mongodb://localhost:27017/parkiu';
       
       await mongoose.connect(mongoUri, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
         maxPoolSize: 10, // Mantener hasta 10 conexiones
         serverSelectionTimeoutMS: 5000, // Timeout después de 5s
         socketTimeoutMS: 45000, // Cerrar sockets después de 45s
-        bufferMaxEntries: 0, // Deshabilitar mongoose buffering
-        bufferCommands: false, // Deshabilitar mongoose buffering
       });
 
       this.isConnected = true;
