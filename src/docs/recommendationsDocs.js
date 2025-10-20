@@ -1,8 +1,8 @@
 /**
  * @swagger
  * tags:
- *   name: Recommendations
- *   description: Endpoints for managing parking spot recommendations and historical usage data
+ *   name: Recomendaciones
+ *   description: Endpoints para gestionar recomendaciones y datos históricos de uso
  */
 
 /**
@@ -12,17 +12,17 @@
  *     Recommendation:
  *       type: object
  *       properties:
- *         day:
+ *         dia:
  *           type: string
- *           example: Monday
- *         recommendedHours:
+ *           example: Lunes
+ *         horasRecomendadas:
  *           type: array
  *           items:
  *             type: string
  *           example: ["7:00 AM", "10:00 AM"]
  *       required:
- *         - day
- *         - recommendedHours
+ *         - dia
+ *         - horasRecomendadas
  *
  *     HistoricalRecord:
  *       type: object
@@ -40,7 +40,7 @@
  *           example: "2024-08-31T09:00:00Z"
  *         status:
  *           type: string
- *           example: occupied
+ *           example: ocupado
  *       required:
  *         - startTime
  *         - endTime
@@ -50,7 +50,7 @@
  *       properties:
  *         message:
  *           type: string
- *           example: "Invalid request parameters"
+ *           example: "Parámetros de solicitud inválidos"
  *         error:
  *           type: string
  *           example: "ValidationError"
@@ -60,11 +60,13 @@
  * @swagger
  * /api/recommendations:
  *   get:
- *     summary: Get parking spot recommendations
- *     tags: [Recommendations]
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Obtener recomendaciones de parqueo
+ *     tags: [Recomendaciones]
  *     responses:
  *       200:
- *         description: Successfully retrieved parking spot recommendations
+ *         description: Recomendaciones obtenidas correctamente
  *         content:
  *           application/json:
  *             schema:
@@ -75,14 +77,14 @@
  *                   items:
  *                     $ref: '#/components/schemas/Recommendation'
  *       500:
- *         description: Server error while retrieving recommendations
+ *         description: Error del servidor al obtener recomendaciones
  *         content:
  *           application/json:
  *             $ref: '#/components/schemas/Error'
  *
  *   post:
- *     summary: Create a historical parking usage record
- *     tags: [Recommendations]
+ *     summary: Crear un registro histórico de uso de parqueo
+ *     tags: [Recomendaciones]
  *     requestBody:
  *       required: true
  *       content:
@@ -91,7 +93,7 @@
  *             $ref: '#/components/schemas/HistoricalRecord'
  *     responses:
  *       201:
- *         description: Historical record created successfully
+ *         description: Registro histórico creado exitosamente
  *         content:
  *           application/json:
  *             schema:
@@ -103,12 +105,12 @@
  *                 data:
  *                   $ref: '#/components/schemas/HistoricalRecord'
  *       400:
- *         description: Invalid request or missing parameters
+ *         description: Solicitud inválida o parámetros faltantes
  *         content:
  *           application/json:
  *             $ref: '#/components/schemas/Error'
  *       500:
- *         description: Server error while creating historical record
+ *         description: Error del servidor al crear el registro histórico
  *         content:
  *           application/json:
  *             $ref: '#/components/schemas/Error'

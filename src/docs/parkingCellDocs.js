@@ -2,7 +2,7 @@
  * @swagger
  * tags:
  *   name: ParkingCells
- *   description: Endpoints for managing parking cell statuses
+ *   description: Endpoints para gestionar el estado de las celdas de parqueo
  */
 
 /**
