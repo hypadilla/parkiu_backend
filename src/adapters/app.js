@@ -40,11 +40,11 @@ const corsOptions = {
     // Permitir requests sin origin (como mobile apps o Postman)
     if (!origin) return callback(null, true);
     
-    // Construir lista de orígenes permitidos
+    // Construir lista de orígenes permitidos para CORS
     let allowedOrigins = [];
     
     if (process.env.CORS_ORIGINS) {
-      // Si CORS_ORIGINS está definido, usarlo
+      // Usar CORS_ORIGINS que puede contener múltiples URLs separadas por coma
       allowedOrigins = process.env.CORS_ORIGINS.split(',').map(origin => origin.trim());
     } else {
       // Fallback: orígenes de desarrollo + FRONTEND_URL
