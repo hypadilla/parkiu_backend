@@ -40,15 +40,29 @@ const corsOptions = {
     // Permitir requests sin origin (como mobile apps o Postman)
     if (!origin) return callback(null, true);
     
-    const allowedOrigins = process.env.CORS_ORIGINS 
-      ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
-      : ['http://localhost:5173', 'http://localhost:4200', 'http://localhost:3001'];
+    // Construir lista de orígenes permitidos
+    let allowedOrigins = [];
+    
+    if (process.env.CORS_ORIGINS) {
+      // Si CORS_ORIGINS está definido, usarlo
+      allowedOrigins = process.env.CORS_ORIGINS.split(',').map(origin => origin.trim());
+    } else {
+      // Fallback: orígenes de desarrollo + FRONTEND_URL
+      allowedOrigins = [
+        'http://localhost:5173', 
+        'http://localhost:4200', 
+        'http://localhost:3001',
+        process.env.FRONTEND_URL
+      ].filter(Boolean);
+    }
     
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     } else {
       console.log('🚫 CORS bloqueado para origen:', origin);
       console.log('✅ Orígenes permitidos:', allowedOrigins);
+      console.log('🔧 FRONTEND_URL:', process.env.FRONTEND_URL);
+      console.log('🔧 CORS_ORIGINS:', process.env.CORS_ORIGINS);
       return callback(new Error('No permitido por CORS'), false);
     }
   },
