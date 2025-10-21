@@ -34,27 +34,30 @@ app.use(morganMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Configuración de CORS
 const corsOptions = {
-  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:5173', 'http://localhost:4200'],
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  origin: function (origin, callback) {
+    // Permitir requests sin origin (como mobile apps o Postman)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = process.env.CORS_ORIGINS 
+      ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+      : ['http://localhost:5173', 'http://localhost:4200', 'http://localhost:3001'];
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      console.log('🚫 CORS bloqueado para origen:', origin);
+      console.log('✅ Orígenes permitidos:', allowedOrigins);
+      return callback(new Error('No permitido por CORS'), false);
+    }
+  },
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 };
-// CORS dinámico por origen
-app.use((req, res, next) => {
-  const origins = Array.isArray(corsOptions.origin) ? corsOptions.origin : (typeof corsOptions.origin === 'function' ? [] : []);
-  const requestOrigin = req.headers.origin;
-  if (requestOrigin && (process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').includes(requestOrigin) : origins.includes(requestOrigin))) {
-    res.header('Access-Control-Allow-Origin', requestOrigin);
-  }
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', corsOptions.methods);
-  res.header('Access-Control-Allow-Headers', corsOptions.allowedHeaders.join(','));
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  next();
-});
+
 app.use(cors(corsOptions));
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
