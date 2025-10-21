@@ -21,18 +21,17 @@ class ChangeStreamService {
 
       // Verificar si MongoDB soporta Change Streams (replica sets)
       const connection = mongoService.getConnection();
-      const adminDb = connection.admin();
       
       try {
-        await adminDb.replSetGetStatus();
-        // Es un replica set, podemos usar Change Streams
+        // Intentar usar Change Streams directamente
+        // Si falla, automáticamente usará polling
         await this.startParkingCellChangeStream();
         await this.startUserChangeStream();
         await this.startRecommendationChangeStream();
         console.log('✅ Change Streams iniciados correctamente');
       } catch (replicaError) {
-        // No es un replica set, usar polling como fallback
-        console.log('⚠️ MongoDB no es un replica set, usando polling para tiempo real');
+        // No es un replica set o hay problemas, usar polling como fallback
+        console.log('⚠️ MongoDB no soporta Change Streams, usando polling para tiempo real');
         this.startPollingMode();
       }
     } catch (error) {
